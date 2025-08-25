@@ -148,6 +148,65 @@ const ManageServices = () => {
     setConfirmMessage('');
   };
 
+  // Agregar servicios básicos predeterminados
+  const addBasicServices = async () => {
+    if (!db) {
+      setNotification({ message: 'La base de datos no está disponible.', type: 'error' });
+      return;
+    }
+
+    const basicServices = [
+      {
+        name: 'Corte Clásico',
+        description: 'Corte tradicional de cabello con estilo clásico',
+        price: 15000,
+        durationMinutes: 30,
+        isActive: true,
+        category: 'cortes'
+      },
+      {
+        name: 'Corte + Barba',
+        description: 'Corte de cabello completo con arreglo de barba',
+        price: 25000,
+        durationMinutes: 45,
+        isActive: true,
+        category: 'combos'
+      },
+      {
+        name: 'Afeitado Tradicional',
+        description: 'Afeitado clásico con navaja y toalla caliente',
+        price: 18000,
+        durationMinutes: 30,
+        isActive: true,
+        category: 'afeitado'
+      },
+      {
+        name: 'Corte Premium',
+        description: 'Corte premium con lavado, masaje y styling',
+        price: 35000,
+        durationMinutes: 60,
+        isActive: true,
+        category: 'premium'
+      }
+    ];
+
+    try {
+      const servicesCollectionRef = collection(db, 'services');
+      
+      for (const service of basicServices) {
+        await addDoc(servicesCollectionRef, service);
+      }
+      
+      setNotification({ 
+        message: `${basicServices.length} servicios básicos agregados exitosamente.`, 
+        type: 'success' 
+      });
+    } catch (error) {
+      console.error("Error adding basic services:", error);
+      setNotification({ message: 'Error al agregar servicios básicos.', type: 'error' });
+    }
+  };
+
   const closeNotification = () => setNotification(null);
 
 
@@ -164,12 +223,24 @@ const ManageServices = () => {
       <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-6 text-center">Gestión de Servicios</h2>
       
       {/* Botón para añadir nuevo servicio */}
-      <button
-        onClick={() => { setShowForm(true); setCurrentService(null); setFormData(initialFormState); }}
-        className="mb-6 w-full md:w-auto bg-amber-500 hover:bg-amber-600 text-zinc-900 font-bold py-3 px-6 rounded-xl shadow-lg flex items-center justify-center transition duration-300 transform hover:-translate-y-1"
-      >
-        <PlusCircle size={24} className="mr-2" /> Añadir Nuevo Servicio
-      </button>
+      <div className="mb-6 flex flex-col md:flex-row gap-4">
+        <button
+          onClick={() => { setShowForm(true); setCurrentService(null); setFormData(initialFormState); }}
+          className="w-full md:w-auto bg-amber-500 hover:bg-amber-600 text-zinc-900 font-bold py-3 px-6 rounded-xl shadow-lg flex items-center justify-center transition duration-300 transform hover:-translate-y-1"
+        >
+          <PlusCircle size={24} className="mr-2" /> Añadir Nuevo Servicio
+        </button>
+        
+        {/* Botón para agregar servicios básicos */}
+        {services.length === 0 && (
+          <button
+            onClick={addBasicServices}
+            className="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg flex items-center justify-center transition duration-300 transform hover:-translate-y-1"
+          >
+            <Scissors size={24} className="mr-2" /> Agregar Servicios Básicos
+          </button>
+        )}
+      </div>
 
       {/* Formulario de Añadir/Editar Servicio */}
       {showForm && (

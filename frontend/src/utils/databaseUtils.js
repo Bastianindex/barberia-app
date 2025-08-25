@@ -326,7 +326,7 @@ export const migrateLegacyData = async () => {
   }
 };
 
-export default {
+const databaseUtils = {
   createAppointmentWithRelations,
   updateClientStats,
   updateServiceStats,
@@ -336,3 +336,5 @@ export default {
   findClient,
   migrateLegacyData
 };
+
+export default databaseUtils;
