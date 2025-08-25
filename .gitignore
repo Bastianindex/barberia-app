@@ -1,0 +1,32 @@
+# Ignorar carpetas de dependencias de Node.js
+node_modules/
+
+# Ignorar builds y logs
+build/
+.env
+.env.local
+.DS_Store
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Ignorar carpetas node_modules dentro de subproyectos (Frontend y Functions)
+frontend/node_modules/
+firebase/functions/node_modules/
+
+# Ignorar la carpeta de build del frontend (cuando React se compile)
+frontend/build/
+
+# Ignorar la carpeta de compilación de Firebase Functions (si usas TypeScript)
+firebase/functions/lib/
+
+# Archivos de configuración de Firebase (seguridad)
+.firebaserc # Aunque firebase init lo crea, a veces contiene IDs de proyecto, mejor ignorarlo si es un repo público
+firebase-debug.log
+
+# Archivos de VS Code
+.vscode/
+
+# Otros
+*.log
+*.swp
