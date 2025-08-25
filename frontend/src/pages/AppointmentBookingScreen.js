@@ -8,7 +8,7 @@ import {
   Phone,
   Scissors
 } from 'lucide-react';
-import { doc, getDoc, collection, addDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import { createAppointmentWithRelations } from '../utils/databaseUtils';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -32,14 +32,6 @@ const AppointmentBookingScreen = ({
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [notification, setNotification] = useState({ show: false, message: '', type: '' });
   
-  // Mock service data
-  const mockService = {
-    id: selectedServiceId,
-    name: 'Corte Clásico',
-    price: 15000,
-    duration: 30
-  };
-  
   // Generar fechas disponibles (próximos 7 días)
   useEffect(() => {
     const dates = [];
@@ -60,37 +52,76 @@ const AppointmentBookingScreen = ({
     setAvailableDates(dates);
   }, []);
   
-  // Generar horarios disponibles (9:00 AM - 9:00 PM)
+  // Generar horarios disponibles (9:00 AM - 9:00 PM) y verificar disponibilidad
   useEffect(() => {
-    const times = [];
-    for (let hour = 9; hour <= 21; hour++) {
-      const time24 = `${hour.toString().padStart(2, '0')}:00`;
-      const time12 = hour > 12 ? `${hour - 12}:00 PM` : 
-                    hour === 12 ? `${hour}:00 PM` : 
-                    `${hour}:00 AM`;
+    const loadAvailableTimes = async () => {
+      const times = [];
       
-      times.push({
-        time24,
-        time12,
-        available: true // Mock: todos los horarios disponibles
-      });
-    }
-    
-    setAvailableTimes(times);
-  }, []);
+      // Generar todos los horarios posibles
+      for (let hour = 9; hour <= 21; hour++) {
+        const time24 = `${hour.toString().padStart(2, '0')}:00`;
+        const time12 = hour > 12 ? `${hour - 12}:00 PM` : 
+                      hour === 12 ? `${hour}:00 PM` : 
+                      `${hour}:00 AM`;
+        
+        times.push({
+          time24,
+          time12,
+          available: true // Por defecto disponible
+        });
+      }
+
+      // Si hay fecha seleccionada y base de datos disponible, verificar citas existentes
+      if (selectedDate && db) {
+        try {
+          const appointmentsRef = collection(db, 'appointments');
+          const q = query(
+            appointmentsRef, 
+            where('date', '==', selectedDate.dateString)
+          );
+          const snapshot = await getDocs(q);
+          
+          // Obtener horarios ocupados
+          const occupiedTimes = new Set();
+          snapshot.docs.forEach(doc => {
+            const appointmentData = doc.data();
+            if (appointmentData.time) {
+              occupiedTimes.add(appointmentData.time);
+            }
+          });
+          
+          // Marcar horarios ocupados
+          times.forEach(timeSlot => {
+            if (occupiedTimes.has(timeSlot.time24)) {
+              timeSlot.available = false;
+            }
+          });
+          
+        } catch (error) {
+          console.error('Error checking appointment availability:', error);
+          // En caso de error, mantener todos los horarios como disponibles
+        }
+      }
+      
+      setAvailableTimes(times);
+    };
+
+    loadAvailableTimes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate]); // Solo recargar cuando cambie la fecha seleccionada
   
   // Cargar detalles del servicio
   useEffect(() => {
     const loadServiceDetails = async () => {
       if (!selectedServiceId) {
-        setServiceDetails(mockService);
+        setServiceDetails(null);
         setLoading(false);
         return;
       }
       
       try {
         if (!db) {
-          setServiceDetails(mockService);
+          setServiceDetails(null);
           setLoading(false);
           return;
         }
@@ -102,12 +133,12 @@ const AppointmentBookingScreen = ({
         if (serviceDoc.exists()) {
           setServiceDetails({ id: serviceDoc.id, ...serviceDoc.data() });
         } else {
-          // Si no existe el servicio, usar mock
-          setServiceDetails(mockService);
+          // Si no existe el servicio
+          setServiceDetails(null);
         }
       } catch (error) {
         console.error('Error loading service details:', error);
-        setServiceDetails(mockService);
+        setServiceDetails(null);
       }
       
       setLoading(false);
@@ -138,6 +169,12 @@ const AppointmentBookingScreen = ({
   
   // Manejar selección de hora
   const handleTimeSelection = (timeObj) => {
+    // Verificar si el horario está disponible
+    if (!timeObj.available) {
+      showNotification('Este horario ya está ocupado. Por favor selecciona otro horario.', 'warning');
+      return;
+    }
+    
     // Validar que el objeto de hora tiene las propiedades requeridas
     if (timeObj && timeObj.time24 && timeObj.time12) {
       setSelectedTime(timeObj);
@@ -374,7 +411,7 @@ const AppointmentBookingScreen = ({
         
         {/* Selección de hora */}
         <div className="mb-8">
-          <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+          <h3 className="text-xl font-semibold mb-2 flex items-center gap-2">
             <Clock className="w-5 h-5 text-amber-400" />
             Selecciona una hora
             {selectedDate && (
@@ -383,6 +420,29 @@ const AppointmentBookingScreen = ({
               </span>
             )}
           </h3>
+          
+          {/* Leyenda de disponibilidad */}
+          {selectedDate && (
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex gap-4 text-xs">
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 border border-zinc-600 bg-zinc-800 rounded"></div>
+                  <span className="text-zinc-400">Disponible</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 border border-red-600 bg-red-900/30 rounded"></div>
+                  <span className="text-red-400">Ocupado</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 border border-amber-500 bg-amber-500/10 rounded"></div>
+                  <span className="text-amber-400">Seleccionado</span>
+                </div>
+              </div>
+              <div className="text-xs text-zinc-400">
+                {availableTimes.filter(t => t.available).length} horarios disponibles
+              </div>
+            </div>
+          )}
           
           {!selectedDate ? (
             <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-6 text-center">
@@ -396,15 +456,21 @@ const AppointmentBookingScreen = ({
                   key={index}
                   onClick={() => handleTimeSelection(timeObj)}
                   disabled={!timeObj.available}
-                  className={`p-3 rounded-lg border text-sm font-medium transition-all ${
+                  title={!timeObj.available ? 'Este horario ya está ocupado' : `Reservar cita a las ${timeObj.time12}`}
+                  className={`p-3 rounded-lg border text-sm font-medium transition-all relative ${
                     isTimeSelected(timeObj)
                       ? 'border-amber-500 bg-amber-500/10 text-white'
                       : timeObj.available
-                      ? 'border-zinc-600 bg-zinc-800 hover:border-zinc-500 text-zinc-300 hover:text-white'
-                      : 'border-zinc-700 bg-zinc-900 text-zinc-600 cursor-not-allowed'
+                      ? 'border-zinc-600 bg-zinc-800 hover:border-zinc-500 text-zinc-300 hover:text-white hover:bg-zinc-700'
+                      : 'border-red-600 bg-red-900/30 text-red-400 cursor-not-allowed hover:border-red-500'
                   }`}
                 >
-                  {timeObj.time12}
+                  <span className={!timeObj.available ? 'opacity-50' : ''}>{timeObj.time12}</span>
+                  {!timeObj.available && (
+                    <span className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-xs bg-red-800 px-1 rounded font-bold">Ocupado</span>
+                    </span>
+                  )}
                 </button>
               ))}
             </div>

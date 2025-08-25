@@ -58,55 +58,11 @@ const Appointments = () => {
   const [deleteModal, setDeleteModal] = useState({ show: false, appointmentId: null });
   const [notification, setNotification] = useState({ show: false, message: '', type: '' });
   
-  // Mock data para desarrollo
-  const mockServices = [
-    { id: '1', name: 'Corte Clásico', price: 15000, duration: 30, isActive: true },
-    { id: '2', name: 'Corte + Barba', price: 25000, duration: 45, isActive: true },
-    { id: '3', name: 'Afeitado Tradicional', price: 18000, duration: 30, isActive: true },
-    { id: '4', name: 'Corte Premium', price: 35000, duration: 60, isActive: true }
-  ];
-  
-  const mockAppointments = [
-    {
-      id: '1',
-      clientName: 'Juan Pérez',
-      clientPhone: '+57 300 123 4567',
-      serviceId: '1',
-      serviceName: 'Corte Clásico',
-      date: '2025-08-26',
-      time: '09:00',
-      status: 'Confirmada',
-      createdAt: new Date()
-    },
-    {
-      id: '2',
-      clientName: 'Carlos Rodríguez',
-      clientPhone: '+57 301 234 5678',
-      serviceId: '2',
-      serviceName: 'Corte + Barba',
-      date: '2025-08-26',
-      time: '10:30',
-      status: 'Pendiente',
-      createdAt: new Date()
-    },
-    {
-      id: '3',
-      clientName: 'Miguel Torres',
-      clientPhone: '+57 302 345 6789',
-      serviceId: '3',
-      serviceName: 'Afeitado Tradicional',
-      date: '2025-08-27',
-      time: '14:00',
-      status: 'Completada',
-      createdAt: new Date()
-    }
-  ];
-  
   // Cargar servicios disponibles
   useEffect(() => {
     const loadServices = async () => {
       if (!db) {
-        setServices(mockServices);
+        setServices([]);
         return;
       }
       
@@ -121,12 +77,12 @@ const Appointments = () => {
             .filter(service => service.isActive === true);
           setServices(servicesData);
         } else {
-          setServices(mockServices);
+          setServices([]);
         }
       } catch (error) {
         console.error('Error loading services:', error);
-        setServices(mockServices);
-        showNotification('Error al cargar servicios, usando datos de prueba', 'error');
+        setServices([]);
+        showNotification('Error al cargar servicios', 'error');
       }
     };
     
@@ -137,7 +93,7 @@ const Appointments = () => {
   // Cargar citas en tiempo real
   useEffect(() => {
     if (!db || !userId) {
-      setAppointments(mockAppointments);
+      setAppointments([]);
       setLoading(false);
       return;
     }
@@ -156,15 +112,15 @@ const Appointments = () => {
         setLoading(false);
       }, (error) => {
         console.error('Error loading appointments:', error);
-        setAppointments(mockAppointments);
+        setAppointments([]);
         setLoading(false);
-        showNotification('Error al cargar citas, usando datos de prueba', 'error');
+        showNotification('Error al cargar citas', 'error');
       });
       
       return () => unsubscribe();
     } catch (error) {
       console.error('Error setting up appointments listener:', error);
-      setAppointments(mockAppointments);
+      setAppointments([]);
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

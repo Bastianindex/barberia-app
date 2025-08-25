@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'; // Asumo que AuthContext es lo
 import { collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import Notification from '../components/Notification'; // Usamos el componente Notification
 import ConfirmationModal from '../components/ConfirmationModal'; // Usamos el componente ConfirmationModal
-import { PlusCircle, Edit, Trash2, Scissors, DollarSign, Clock } from 'lucide-react'; // Iconos para servicios
+import { PlusCircle, Edit, Trash2, Scissors, DollarSign, Clock, Search, Filter } from 'lucide-react'; // Iconos para servicios
 
 const ManageServices = () => {
   const { db, isAuthReady } = useAuth(); // Obtener db, isAuthReady de AuthContext
@@ -16,6 +16,11 @@ const ManageServices = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [confirmMessage, setConfirmMessage] = useState('');
+  
+  // Estados para filtros y búsqueda
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCategory, setFilterCategory] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
 
   // Estado inicial del formulario para un nuevo servicio
   const initialFormState = {
@@ -23,7 +28,8 @@ const ManageServices = () => {
     description: '',
     price: '',
     durationMinutes: '',
-    isActive: true, // Nuevo campo para indicar si el servicio está activo
+    category: 'cortes',
+    isActive: true,
   };
   const [formData, setFormData] = useState(initialFormState);
 
@@ -106,9 +112,10 @@ const ManageServices = () => {
   const handleEdit = (service) => {
     setFormData({
       name: service.name,
-      description: service.description,
-      price: service.price.toString(), // Convertir a string para el input
-      durationMinutes: service.durationMinutes.toString(), // Convertir a string para el input
+      description: service.description || '',
+      price: service.price.toString(),
+      durationMinutes: service.durationMinutes.toString(),
+      category: service.category || 'cortes',
       isActive: service.isActive || false,
     });
     setCurrentService(service);
@@ -158,7 +165,7 @@ const ManageServices = () => {
     const basicServices = [
       {
         name: 'Corte Clásico',
-        description: 'Corte tradicional de cabello con estilo clásico',
+        description: 'Corte tradicional de cabello masculino con tijera y máquina',
         price: 15000,
         durationMinutes: 30,
         isActive: true,
@@ -166,7 +173,7 @@ const ManageServices = () => {
       },
       {
         name: 'Corte + Barba',
-        description: 'Corte de cabello completo con arreglo de barba',
+        description: 'Corte de cabello completo más arreglo y perfilado de barba',
         price: 25000,
         durationMinutes: 45,
         isActive: true,
@@ -174,7 +181,7 @@ const ManageServices = () => {
       },
       {
         name: 'Afeitado Tradicional',
-        description: 'Afeitado clásico con navaja y toalla caliente',
+        description: 'Afeitado clásico con navaja, toalla caliente y aftershave',
         price: 18000,
         durationMinutes: 30,
         isActive: true,
@@ -182,30 +189,90 @@ const ManageServices = () => {
       },
       {
         name: 'Corte Premium',
-        description: 'Corte premium con lavado, masaje y styling',
+        description: 'Corte premium con lavado, masaje capilar y styling',
         price: 35000,
         durationMinutes: 60,
         isActive: true,
         category: 'premium'
+      },
+      {
+        name: 'Corte Degradado',
+        description: 'Corte moderno con degradado y acabados perfectos',
+        price: 20000,
+        durationMinutes: 35,
+        isActive: true,
+        category: 'cortes'
+      },
+      {
+        name: 'Barba Completa',
+        description: 'Arreglo completo de barba con perfilado y cuidado',
+        price: 15000,
+        durationMinutes: 25,
+        isActive: true,
+        category: 'afeitado'
+      },
+      {
+        name: 'Corte + Barba + Cejas',
+        description: 'Servicio completo: corte, barba y arreglo de cejas',
+        price: 30000,
+        durationMinutes: 50,
+        isActive: true,
+        category: 'combos'
+      },
+      {
+        name: 'Tratamiento Capilar',
+        description: 'Tratamiento hidratante y fortalecedor para el cabello',
+        price: 25000,
+        durationMinutes: 40,
+        isActive: true,
+        category: 'tratamientos'
       }
     ];
 
     try {
       const servicesCollectionRef = collection(db, 'services');
+      let addedCount = 0;
       
+      // Verificar si cada servicio ya existe antes de agregarlo
       for (const service of basicServices) {
-        await addDoc(servicesCollectionRef, service);
+        const existingService = services.find(s => s.name === service.name);
+        if (!existingService) {
+          await addDoc(servicesCollectionRef, service);
+          addedCount++;
+        }
       }
       
-      setNotification({ 
-        message: `${basicServices.length} servicios básicos agregados exitosamente.`, 
-        type: 'success' 
-      });
+      if (addedCount > 0) {
+        setNotification({ 
+          message: `${addedCount} servicios básicos agregados exitosamente.`, 
+          type: 'success' 
+        });
+      } else {
+        setNotification({ 
+          message: 'Todos los servicios básicos ya existen.', 
+          type: 'info' 
+        });
+      }
     } catch (error) {
       console.error("Error adding basic services:", error);
       setNotification({ message: 'Error al agregar servicios básicos.', type: 'error' });
     }
   };
+
+  // Función para filtrar servicios
+  const filteredServices = services.filter(service => {
+    const matchesSearch = service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         service.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = filterCategory === 'all' || service.category === filterCategory;
+    const matchesStatus = filterStatus === 'all' || 
+                         (filterStatus === 'active' && service.isActive) ||
+                         (filterStatus === 'inactive' && !service.isActive);
+    
+    return matchesSearch && matchesCategory && matchesStatus;
+  });
+
+  // Obtener categorías únicas para el filtro
+  const categories = [...new Set(services.map(service => service.category).filter(Boolean))];
 
   const closeNotification = () => setNotification(null);
 
@@ -232,14 +299,78 @@ const ManageServices = () => {
         </button>
         
         {/* Botón para agregar servicios básicos */}
-        {services.length === 0 && (
-          <button
-            onClick={addBasicServices}
-            className="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg flex items-center justify-center transition duration-300 transform hover:-translate-y-1"
-          >
-            <Scissors size={24} className="mr-2" /> Agregar Servicios Básicos
-          </button>
-        )}
+        <button
+          onClick={addBasicServices}
+          className="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg flex items-center justify-center transition duration-300 transform hover:-translate-y-1"
+        >
+          <Scissors size={24} className="mr-2" /> Agregar Servicios Básicos
+        </button>
+      </div>
+
+      {/* Filtros de búsqueda */}
+      <div className="mb-6 bg-zinc-800 p-4 rounded-2xl border border-zinc-700">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Búsqueda por texto */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <input
+              type="text"
+              placeholder="Buscar servicios..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-zinc-700 border border-zinc-600 rounded-lg text-white placeholder-gray-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+            />
+          </div>
+
+          {/* Filtro por categoría */}
+          <div className="relative">
+            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-zinc-700 border border-zinc-600 rounded-lg text-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 appearance-none"
+            >
+              <option value="all">Todas las categorías</option>
+              {categories.map(category => (
+                <option key={category} value={category}>
+                  {category.charAt(0).toUpperCase() + category.slice(1)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filtro por estado */}
+          <div>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="w-full px-4 py-2 bg-zinc-700 border border-zinc-600 rounded-lg text-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+            >
+              <option value="all">Todos los estados</option>
+              <option value="active">Activos</option>
+              <option value="inactive">Inactivos</option>
+            </select>
+          </div>
+        </div>
+        
+        {/* Resumen de filtros */}
+        <div className="mt-3 flex items-center justify-between text-sm text-gray-400">
+          <span>
+            Mostrando {filteredServices.length} de {services.length} servicios
+          </span>
+          {(searchTerm || filterCategory !== 'all' || filterStatus !== 'all') && (
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setFilterCategory('all');
+                setFilterStatus('all');
+              }}
+              className="text-amber-400 hover:text-amber-300 underline"
+            >
+              Limpiar filtros
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Formulario de Añadir/Editar Servicio */}
@@ -269,6 +400,23 @@ const ManageServices = () => {
                 rows="3"
                 className="mt-1 block w-full rounded-md border-zinc-700 bg-zinc-900 text-white shadow-sm focus:border-amber-500 focus:ring-amber-500 p-3"
               ></textarea>
+            </div>
+            <div>
+              <label htmlFor="category" className="block text-sm font-medium text-gray-300">Categoría</label>
+              <select
+                id="category"
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                required
+                className="mt-1 block w-full rounded-md border-zinc-700 bg-zinc-900 text-white shadow-sm focus:border-amber-500 focus:ring-amber-500 p-3"
+              >
+                <option value="cortes">Cortes</option>
+                <option value="afeitado">Afeitado</option>
+                <option value="combos">Combos</option>
+                <option value="premium">Premium</option>
+                <option value="tratamientos">Tratamientos</option>
+              </select>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -329,8 +477,14 @@ const ManageServices = () => {
       {/* Listado de Servicios */}
       <div className="bg-zinc-800 p-6 rounded-2xl shadow-xl border border-zinc-700">
         <h3 className="text-2xl font-bold text-white mb-4">Servicios Disponibles</h3>
-        {services.length === 0 ? (
-          <p className="text-gray-400">No hay servicios registrados.</p>
+        {filteredServices.length === 0 ? (
+          <div className="text-center py-8">
+            {services.length === 0 ? (
+              <p className="text-gray-400">No hay servicios registrados.</p>
+            ) : (
+              <p className="text-gray-400">No se encontraron servicios con los filtros aplicados.</p>
+            )}
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-zinc-700">
@@ -338,6 +492,7 @@ const ManageServices = () => {
                 <tr>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider rounded-tl-lg">Nombre</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Descripción</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Categoría</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Precio</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Duración (min)</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Estado</th>
@@ -345,12 +500,23 @@ const ManageServices = () => {
                 </tr>
               </thead>
               <tbody className="bg-zinc-800 divide-y divide-zinc-700">
-                {services.map((service) => (
+                {filteredServices.map((service) => (
                   <tr key={service.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white flex items-center">
                       <Scissors size={16} className="mr-2 text-amber-400"/> {service.name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{service.description}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        service.category === 'cortes' ? 'bg-blue-700 text-blue-100' :
+                        service.category === 'afeitado' ? 'bg-purple-700 text-purple-100' :
+                        service.category === 'combos' ? 'bg-orange-700 text-orange-100' :
+                        service.category === 'premium' ? 'bg-yellow-700 text-yellow-100' :
+                        'bg-gray-700 text-gray-100'
+                      }`}>
+                        {service.category ? service.category.charAt(0).toUpperCase() + service.category.slice(1) : 'General'}
+                      </span>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 flex items-center">
                       <DollarSign size={16} className="mr-1 text-green-500"/> {service.price?.toFixed(2) || '0.00'}
                     </td>

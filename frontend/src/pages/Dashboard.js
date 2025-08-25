@@ -14,56 +14,6 @@ const Dashboard = () => {
   });
   const [upcomingAppointments, setUpcomingAppointments] = useState([]);
 
-  // Mock data para cuando Firestore no tenga datos reales
-  const mockMetrics = {
-    totalAppointments: 147,
-    pendingAppointments: 8,
-    totalClients: 85
-  };
-
-  const mockUpcomingAppointments = [
-    {
-      id: '1',
-      clientName: 'Carlos Rodríguez',
-      service: 'Corte + Barba',
-      dateTime: '2025-08-25T10:30:00',
-      status: 'confirmada',
-      duration: 45
-    },
-    {
-      id: '2',
-      clientName: 'Miguel Santos',
-      service: 'Corte Clásico',
-      dateTime: '2025-08-25T11:15:00',
-      status: 'pendiente',
-      duration: 30
-    },
-    {
-      id: '3',
-      clientName: 'Pedro González',
-      service: 'Afeitado Premium',
-      dateTime: '2025-08-25T14:00:00',
-      status: 'confirmada',
-      duration: 25
-    },
-    {
-      id: '4',
-      clientName: 'Luis Martínez',
-      service: 'Corte + Lavado',
-      dateTime: '2025-08-25T15:30:00',
-      status: 'pendiente',
-      duration: 40
-    },
-    {
-      id: '5',
-      clientName: 'Antonio Silva',
-      service: 'Barba + Bigote',
-      dateTime: '2025-08-25T16:45:00',
-      status: 'confirmada',
-      duration: 35
-    }
-  ];
-
   useEffect(() => {
     if (!db || !currentUser || !isAuthReady) {
       console.log("Dashboard: Firestore/Auth not ready.");
@@ -85,7 +35,9 @@ const Dashboard = () => {
           
           // Calcular métricas
           const total = appointments.length;
-          const pending = appointments.filter(apt => apt.status === 'pendiente').length;
+          const pending = appointments.filter(apt => 
+            apt.status === 'pendiente' || apt.status === 'pending'
+          ).length;
           
           setMetrics(prev => ({
             ...prev,
@@ -95,27 +47,24 @@ const Dashboard = () => {
 
           // Próximas citas (ordenadas por fecha)
           const upcoming = appointments
-            .filter(apt => new Date(apt.dateTime) >= new Date())
-            .sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime))
+            .filter(apt => {
+              // Crear fecha completa combinando date y time
+              const appointmentDate = new Date(`${apt.date}T${apt.time || '00:00'}`);
+              return appointmentDate >= new Date();
+            })
+            .sort((a, b) => {
+              const dateA = new Date(`${a.date}T${a.time || '00:00'}`);
+              const dateB = new Date(`${b.date}T${b.time || '00:00'}`);
+              return dateA - dateB;
+            })
             .slice(0, 5);
           
-          setUpcomingAppointments(upcoming.length > 0 ? upcoming : mockUpcomingAppointments);
+          setUpcomingAppointments(upcoming);
         }, (error) => {
           console.error("Error loading appointments:", error);
-          // Usar datos mock en caso de error
-          setMetrics(prev => ({
-            ...prev,
-            totalAppointments: mockMetrics.totalAppointments,
-            pendingAppointments: mockMetrics.pendingAppointments
-          }));
-          setUpcomingAppointments(mockUpcomingAppointments);
+          // En caso de error, mantener estado vacío
+          setUpcomingAppointments([]);
         });
-
-        // Usar datos mock para máquinas (evitar problemas de permisos)
-        setMetrics(prev => ({
-          ...prev,
-          totalClients: mockMetrics.totalClients
-        }));
 
         // Listener para clientes (contar únicos)
         const clientsRef = collection(db, 'clients');
@@ -138,9 +87,7 @@ const Dashboard = () => {
 
       } catch (error) {
         console.error("Error setting up real-time listeners:", error);
-        // Fallback a datos mock
-        setMetrics(mockMetrics);
-        setUpcomingAppointments(mockUpcomingAppointments);
+        // En caso de error, mantener estado inicial vacío
         setLoading(false);
       }
     };
@@ -150,18 +97,40 @@ const Dashboard = () => {
   }, [db, currentUser, isAuthReady]);
 
   // Función para formatear fecha y hora
-  const formatDateTime = (dateTimeStr) => {
-    const date = new Date(dateTimeStr);
+  const formatDateTime = (appointment) => {
+    // Si tiene dateTime (formato antiguo), usarlo
+    if (appointment.dateTime) {
+      const date = new Date(appointment.dateTime);
+      return {
+        date: date.toLocaleDateString('es-ES', { 
+          weekday: 'short', 
+          month: 'short', 
+          day: 'numeric' 
+        }),
+        time: date.toLocaleTimeString('es-ES', { 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        })
+      };
+    }
+    
+    // Si tiene date y time separados (formato nuevo)
+    if (appointment.date && appointment.time) {
+      const dateObj = new Date(appointment.date);
+      return {
+        date: dateObj.toLocaleDateString('es-ES', { 
+          weekday: 'short', 
+          month: 'short', 
+          day: 'numeric' 
+        }),
+        time: appointment.timeDisplay || appointment.time
+      };
+    }
+    
+    // Fallback
     return {
-      date: date.toLocaleDateString('es-ES', { 
-        weekday: 'short', 
-        month: 'short', 
-        day: 'numeric' 
-      }),
-      time: date.toLocaleTimeString('es-ES', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      })
+      date: 'Fecha no disponible',
+      time: 'Hora no disponible'
     };
   };
 
@@ -169,13 +138,17 @@ const Dashboard = () => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'confirmada':
+      case 'confirmed':
         return 'bg-green-700 text-green-100';
       case 'pendiente':
+      case 'pending':
         return 'bg-amber-700 text-amber-100';
-      case 'mantenimiento_urgente':
+      case 'completada':
+      case 'completed':
+        return 'bg-blue-700 text-blue-100';
+      case 'cancelada':
+      case 'cancelled':
         return 'bg-red-700 text-red-100';
-      case 'mantenimiento_próximo':
-        return 'bg-amber-700 text-amber-100';
       default:
         return 'bg-gray-700 text-gray-100';
     }
@@ -270,7 +243,7 @@ const Dashboard = () => {
           ) : (
             <div className="space-y-4">
               {upcomingAppointments.map((appointment) => {
-                const { date, time } = formatDateTime(appointment.dateTime);
+                const { date, time } = formatDateTime(appointment);
                 return (
                   <div key={appointment.id} className="bg-zinc-700 p-4 rounded-xl border border-zinc-600">
                     <div className="flex justify-between items-start mb-2">
@@ -296,41 +269,41 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* Servicios Más Populares */}
+        {/* Información de Servicios */}
         <div className="bg-zinc-800 p-6 rounded-2xl shadow-xl border border-zinc-700">
           <div className="flex items-center mb-6">
             <TrendingUp className="w-6 h-6 text-green-400 mr-3" />
-            <h2 className="text-2xl font-bold text-white">Servicios Populares</h2>
+            <h2 className="text-2xl font-bold text-white">Estado del Sistema</h2>
           </div>
           
           <div className="space-y-4">
             <div className="bg-zinc-700 p-4 rounded-xl border border-zinc-600">
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="font-semibold text-white">Corte + Barba</h3>
-                  <p className="text-gray-300 text-sm">Más solicitado</p>
+                  <h3 className="font-semibold text-white">Sistema de Reservas</h3>
+                  <p className="text-gray-300 text-sm">Activo y funcionando</p>
                 </div>
-                <span className="text-green-400 font-bold">45%</span>
+                <span className="text-green-400 font-bold">✓</span>
               </div>
             </div>
             
             <div className="bg-zinc-700 p-4 rounded-xl border border-zinc-600">
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="font-semibold text-white">Corte Clásico</h3>
-                  <p className="text-gray-300 text-sm">Servicio base</p>
+                  <h3 className="font-semibold text-white">Base de Datos</h3>
+                  <p className="text-gray-300 text-sm">Conectado a Firebase</p>
                 </div>
-                <span className="text-blue-400 font-bold">30%</span>
+                <span className="text-green-400 font-bold">✓</span>
               </div>
             </div>
             
             <div className="bg-zinc-700 p-4 rounded-xl border border-zinc-600">
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="font-semibold text-white">Afeitado Tradicional</h3>
-                  <p className="text-gray-300 text-sm">Especialidad</p>
+                  <h3 className="font-semibold text-white">Servicios Disponibles</h3>
+                  <p className="text-gray-300 text-sm">Listos para reservar</p>
                 </div>
-                <span className="text-amber-400 font-bold">25%</span>
+                <span className="text-green-400 font-bold">✓</span>
               </div>
             </div>
           </div>

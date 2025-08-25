@@ -22,56 +22,12 @@ const ServiceSelectionScreen = ({
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState({ show: false, message: '', type: '' });
   
-  // Mock services data
-  const mockServices = [
-    {
-      id: '1',
-      name: 'Corte Clásico',
-      description: 'Corte tradicional con tijeras y máquina',
-      price: 15000,
-      duration: 30,
-      isActive: true
-    },
-    {
-      id: '2',
-      name: 'Corte + Barba',
-      description: 'Corte completo más arreglo de barba',
-      price: 25000,
-      duration: 45,
-      isActive: true
-    },
-    {
-      id: '3',
-      name: 'Afeitado Tradicional',
-      description: 'Afeitado clásico con navaja y espuma caliente',
-      price: 18000,
-      duration: 30,
-      isActive: true
-    },
-    {
-      id: '4',
-      name: 'Corte Premium',
-      description: 'Corte premium con lavado y peinado',
-      price: 35000,
-      duration: 60,
-      isActive: true
-    },
-    {
-      id: '5',
-      name: 'Tratamiento Capilar',
-      description: 'Tratamiento para el cuidado del cabello',
-      price: 40000,
-      duration: 45,
-      isActive: true
-    }
-  ];
-  
   // Cargar servicios disponibles
   useEffect(() => {
     const loadServices = async () => {
       try {
         if (!db) {
-          setServices(mockServices);
+          setServices([]);
           setLoading(false);
           return;
         }
@@ -88,12 +44,12 @@ const ServiceSelectionScreen = ({
           }));
           setServices(servicesData);
         } else {
-          setServices(mockServices);
+          setServices([]);
         }
       } catch (error) {
         console.error('Error loading services:', error);
-        setServices(mockServices);
-        showNotification('Error al cargar servicios, usando datos de prueba', 'error');
+        setServices([]);
+        showNotification('Error al cargar servicios', 'error');
       }
       
       setLoading(false);
