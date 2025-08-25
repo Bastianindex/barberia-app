@@ -168,10 +168,10 @@ const Dashboard = () => {
   return (
     <div className="p-6 md:p-8 bg-zinc-900 min-h-screen text-white">
       {/* Header del Dashboard */}
-      <div className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-extrabold text-white mb-2">Dashboard</h1>
-        <p className="text-gray-400">Vista general de tu barbería</p>
-        <p className="text-sm text-gray-500 mt-1">
+      <div className="mb-8 animate-fade-in">
+        <h1 className="text-3xl md:text-4xl font-extrabold text-white mb-2 text-shimmer">Dashboard</h1>
+        <p className="text-gray-400 animate-fade-in stagger-delay-1">Vista general de tu barbería</p>
+        <p className="text-sm text-gray-500 mt-1 animate-fade-in stagger-delay-2">
           Usuario: <span className="font-mono text-amber-400">{currentUser?.email}</span> | 
           ID: <span className="font-mono text-gray-300">{currentUser?.uid?.substring(0, 8)}...</span>
         </p>
@@ -180,50 +180,53 @@ const Dashboard = () => {
       {/* Métricas Principales */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {/* Total de Citas */}
-        <div className="bg-zinc-800 p-6 rounded-2xl shadow-xl border border-zinc-700">
+        <div className="bg-zinc-800 p-6 rounded-2xl shadow-xl border border-zinc-700 animate-scale-in hover-lift transition-all-smooth" 
+             style={{ animationDelay: '200ms', opacity: 0, animationFillMode: 'forwards' }}>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-400 text-sm font-medium">Total de Citas</p>
-              <p className="text-3xl font-bold text-white">{metrics.totalAppointments}</p>
+              <p className="text-3xl font-bold text-white animate-glow">{metrics.totalAppointments}</p>
             </div>
-            <div className="bg-blue-600 p-3 rounded-full">
+            <div className="bg-blue-600 p-3 rounded-full animate-bounce-subtle">
               <Calendar className="w-6 h-6 text-white" />
             </div>
           </div>
-          <div className="mt-4 flex items-center">
+          <div className="mt-4 flex items-center animate-fade-in stagger-delay-3">
             <TrendingUp className="w-4 h-4 text-green-400 mr-1" />
             <span className="text-green-400 text-sm">+12% vs mes anterior</span>
           </div>
         </div>
 
         {/* Citas Pendientes */}
-        <div className="bg-zinc-800 p-6 rounded-2xl shadow-xl border border-zinc-700">
+        <div className="bg-zinc-800 p-6 rounded-2xl shadow-xl border border-zinc-700 animate-scale-in hover-lift transition-all-smooth" 
+             style={{ animationDelay: '400ms', opacity: 0, animationFillMode: 'forwards' }}>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-400 text-sm font-medium">Citas Pendientes</p>
-              <p className="text-3xl font-bold text-white">{metrics.pendingAppointments}</p>
+              <p className="text-3xl font-bold text-white animate-glow-pulse">{metrics.pendingAppointments}</p>
             </div>
-            <div className="bg-amber-600 p-3 rounded-full">
+            <div className="bg-amber-600 p-3 rounded-full animate-bounce-subtle">
               <Clock className="w-6 h-6 text-white" />
             </div>
           </div>
-          <div className="mt-4">
+          <div className="mt-4 animate-fade-in stagger-delay-3">
             <span className="text-amber-400 text-sm">Requieren confirmación</span>
           </div>
         </div>
 
         {/* Clientes Registrados */}
-        <div className="bg-zinc-800 p-6 rounded-2xl shadow-xl border border-zinc-700">
+        <div className="bg-zinc-800 p-6 rounded-2xl shadow-xl border border-zinc-700 animate-scale-in hover-lift transition-all-smooth" 
+             style={{ animationDelay: '600ms', opacity: 0, animationFillMode: 'forwards' }}>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-400 text-sm font-medium">Clientes Registrados</p>
-              <p className="text-3xl font-bold text-white">{metrics.totalClients}</p>
+              <p className="text-3xl font-bold text-white animate-glow">{metrics.totalClients}</p>
             </div>
-            <div className="bg-green-600 p-3 rounded-full">
+            <div className="bg-green-600 p-3 rounded-full animate-bounce-subtle">
               <Users className="w-6 h-6 text-white" />
             </div>
           </div>
-          <div className="mt-4">
+          <div className="mt-4 animate-fade-in stagger-delay-3">
             <span className="text-green-400 text-sm">Total de clientes activos</span>
           </div>
         </div>
@@ -232,33 +235,40 @@ const Dashboard = () => {
       {/* Listados Detallados */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Próximas Citas */}
-        <div className="bg-zinc-800 p-6 rounded-2xl shadow-xl border border-zinc-700">
+        <div className="bg-zinc-800 p-6 rounded-2xl shadow-xl border border-zinc-700 animate-slide-in-left hover-lift transition-all-smooth" 
+             style={{ animationDelay: '800ms', opacity: 0, animationFillMode: 'forwards' }}>
           <div className="flex items-center mb-6">
-            <Users className="w-6 h-6 text-amber-400 mr-3" />
-            <h2 className="text-2xl font-bold text-white">Próximas Citas</h2>
+            <Users className="w-6 h-6 text-amber-400 mr-3 animate-bounce-subtle" />
+            <h2 className="text-2xl font-bold text-white text-shimmer">Próximas Citas</h2>
           </div>
           
           {upcomingAppointments.length === 0 ? (
             <p className="text-gray-400 text-center py-8">No hay citas programadas</p>
           ) : (
             <div className="space-y-4">
-              {upcomingAppointments.map((appointment) => {
+              {upcomingAppointments.map((appointment, index) => {
                 const { date, time } = formatDateTime(appointment);
                 return (
-                  <div key={appointment.id} className="bg-zinc-700 p-4 rounded-xl border border-zinc-600">
+                  <div key={appointment.id} 
+                       className="bg-zinc-700 p-4 rounded-xl border border-zinc-600 animate-fade-in hover-lift micro-bounce transition-all-smooth"
+                       style={{ 
+                         animationDelay: `${1000 + (index * 100)}ms`, 
+                         opacity: 0, 
+                         animationFillMode: 'forwards' 
+                       }}>
                     <div className="flex justify-between items-start mb-2">
                       <div>
                         <h3 className="font-semibold text-white">{appointment.clientName}</h3>
                         <p className="text-gray-300 text-sm">{appointment.service}</p>
                       </div>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(appointment.status)}`}>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium animate-pulse ${getStatusColor(appointment.status)}`}>
                         {appointment.status}
                       </span>
                     </div>
                     <div className="flex items-center text-gray-400 text-sm">
-                      <Calendar className="w-4 h-4 mr-1" />
+                      <Calendar className="w-4 h-4 mr-1 animate-bounce-subtle" />
                       <span className="mr-4">{date}</span>
-                      <Clock className="w-4 h-4 mr-1" />
+                      <Clock className="w-4 h-4 mr-1 animate-bounce-subtle" />
                       <span className="mr-4">{time}</span>
                       <span>({appointment.duration} min)</span>
                     </div>
@@ -270,40 +280,44 @@ const Dashboard = () => {
         </div>
 
         {/* Información de Servicios */}
-        <div className="bg-zinc-800 p-6 rounded-2xl shadow-xl border border-zinc-700">
+        <div className="bg-zinc-800 p-6 rounded-2xl shadow-xl border border-zinc-700 animate-slide-in-right hover-lift transition-all-smooth" 
+             style={{ animationDelay: '1000ms', opacity: 0, animationFillMode: 'forwards' }}>
           <div className="flex items-center mb-6">
-            <TrendingUp className="w-6 h-6 text-green-400 mr-3" />
-            <h2 className="text-2xl font-bold text-white">Estado del Sistema</h2>
+            <TrendingUp className="w-6 h-6 text-green-400 mr-3 animate-bounce-subtle" />
+            <h2 className="text-2xl font-bold text-white text-shimmer">Estado del Sistema</h2>
           </div>
           
           <div className="space-y-4">
-            <div className="bg-zinc-700 p-4 rounded-xl border border-zinc-600">
+            <div className="bg-zinc-700 p-4 rounded-xl border border-zinc-600 animate-fade-in hover-lift micro-bounce transition-all-smooth"
+                 style={{ animationDelay: '1200ms', opacity: 0, animationFillMode: 'forwards' }}>
               <div className="flex justify-between items-center">
                 <div>
                   <h3 className="font-semibold text-white">Sistema de Reservas</h3>
                   <p className="text-gray-300 text-sm">Activo y funcionando</p>
                 </div>
-                <span className="text-green-400 font-bold">✓</span>
+                <span className="text-green-400 font-bold animate-glow">✓</span>
               </div>
             </div>
             
-            <div className="bg-zinc-700 p-4 rounded-xl border border-zinc-600">
+            <div className="bg-zinc-700 p-4 rounded-xl border border-zinc-600 animate-fade-in hover-lift micro-bounce transition-all-smooth"
+                 style={{ animationDelay: '1400ms', opacity: 0, animationFillMode: 'forwards' }}>
               <div className="flex justify-between items-center">
                 <div>
                   <h3 className="font-semibold text-white">Base de Datos</h3>
                   <p className="text-gray-300 text-sm">Conectado a Firebase</p>
                 </div>
-                <span className="text-green-400 font-bold">✓</span>
+                <span className="text-green-400 font-bold animate-glow">✓</span>
               </div>
             </div>
             
-            <div className="bg-zinc-700 p-4 rounded-xl border border-zinc-600">
+            <div className="bg-zinc-700 p-4 rounded-xl border border-zinc-600 animate-fade-in hover-lift micro-bounce transition-all-smooth"
+                 style={{ animationDelay: '1600ms', opacity: 0, animationFillMode: 'forwards' }}>
               <div className="flex justify-between items-center">
                 <div>
                   <h3 className="font-semibold text-white">Servicios Disponibles</h3>
                   <p className="text-gray-300 text-sm">Listos para reservar</p>
                 </div>
-                <span className="text-green-400 font-bold">✓</span>
+                <span className="text-green-400 font-bold animate-glow">✓</span>
               </div>
             </div>
           </div>
@@ -311,8 +325,9 @@ const Dashboard = () => {
       </div>
 
       {/* Footer con información adicional */}
-      <div className="mt-8 p-4 bg-zinc-800 rounded-2xl border border-zinc-700">
-        <p className="text-center text-gray-400 text-sm">
+      <div className="mt-8 p-4 bg-zinc-800 rounded-2xl border border-zinc-700 animate-fade-in hover-lift"
+           style={{ animationDelay: '1800ms', opacity: 0, animationFillMode: 'forwards' }}>
+        <p className="text-center text-gray-400 text-sm text-shimmer">
           Dashboard actualizado en tiempo real • Datos desde Firebase Firestore
         </p>
       </div>

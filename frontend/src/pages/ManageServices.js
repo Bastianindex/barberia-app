@@ -293,7 +293,7 @@ const ManageServices = () => {
       <div className="mb-6 flex flex-col md:flex-row gap-4">
         <button
           onClick={() => { setShowForm(true); setCurrentService(null); setFormData(initialFormState); }}
-          className="w-full md:w-auto bg-amber-500 hover:bg-amber-600 text-zinc-900 font-bold py-3 px-6 rounded-xl shadow-lg flex items-center justify-center transition duration-300 transform hover:-translate-y-1"
+          className="w-full md:w-auto bg-amber-500 hover:bg-amber-600 text-zinc-900 font-bold py-3 px-6 rounded-xl shadow-lg flex items-center justify-center transition duration-200 transform hover:-translate-y-1"
         >
           <PlusCircle size={24} className="mr-2" /> Añadir Nuevo Servicio
         </button>
@@ -301,7 +301,7 @@ const ManageServices = () => {
         {/* Botón para agregar servicios básicos */}
         <button
           onClick={addBasicServices}
-          className="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg flex items-center justify-center transition duration-300 transform hover:-translate-y-1"
+          className="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg flex items-center justify-center transition duration-200 transform hover:-translate-y-1"
         >
           <Scissors size={24} className="mr-2" /> Agregar Servicios Básicos
         </button>

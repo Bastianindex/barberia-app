@@ -227,15 +227,15 @@ const ClientRegistrationScreen = ({ onGoBack, onClientRegistered, onAdminAccess 
   const isFormValid = formData.name.trim() && formData.phone.trim();
   
   return (
-    <div className="min-h-screen bg-zinc-900 text-white">
+    <div className="min-h-screen bg-zinc-900 text-white animate-fade-in">
       {/* Header */}
-      <div className="bg-zinc-800 border-b border-zinc-700 px-4 py-4">
+      <div className="bg-zinc-800 border-b border-zinc-700 px-4 py-4 animate-slide-in-left">
         <div className="max-w-md mx-auto flex items-center justify-between">
           {/* Botón discreto de administrador - solo se muestra si está disponible */}
           {onAdminAccess && (
             <button
               onClick={onAdminAccess}
-              className="flex items-center gap-2 text-zinc-500 hover:text-zinc-300 transition-colors"
+              className="flex items-center gap-2 text-zinc-500 hover:text-zinc-300 transition-all-smooth hover-scale micro-bounce"
               title="Acceso administrador"
             >
               <Settings className="w-4 h-4" />
@@ -243,8 +243,8 @@ const ClientRegistrationScreen = ({ onGoBack, onClientRegistered, onAdminAccess 
           )}
           
           <div className="flex items-center gap-2 mx-auto">
-            <Scissors className="w-6 h-6 text-amber-400" />
-            <h1 className="text-lg font-bold">Olimu BarberShop</h1>
+            <Scissors className="w-6 h-6 text-amber-400 animate-pulse-slow" />
+            <h1 className="text-lg font-bold text-glow">Olimu BarberShop</h1>
           </div>
           
           {/* Espaciador para centrar el título */}
@@ -254,24 +254,24 @@ const ClientRegistrationScreen = ({ onGoBack, onClientRegistered, onAdminAccess 
       
       <div className="max-w-md mx-auto p-6">
         {/* Bienvenida */}
-        <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Scissors className="w-10 h-10 text-amber-400" />
+        <div className="text-center mb-8 animate-scale-in">
+          <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-4 hover-glow transition-all-smooth">
+            <Scissors className="w-10 h-10 text-amber-400 animate-pulse-slow" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">
+          <h2 className="text-2xl font-bold text-white mb-2 text-shimmer">
             ¡Bienvenido a Olimu BarberShop!
           </h2>
-          <p className="text-zinc-400">
+          <p className="text-zinc-400 animate-fade-in stagger-delay-2">
             Regístrate para agendar tu cita de forma rápida y sencilla
           </p>
         </div>
         
         {/* Formulario de registro */}
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 animate-slide-in-right stagger-delay-3">
           {/* Nombre */}
-          <div>
+          <div className="animate-fade-in stagger-delay-1">
             <label className="block text-sm font-medium text-zinc-300 mb-2">
-              <User className="w-4 h-4 inline mr-2" />
+              <User className="w-4 h-4 inline mr-2 text-amber-400" />
               Nombre completo *
             </label>
             <input
@@ -279,21 +279,21 @@ const ClientRegistrationScreen = ({ onGoBack, onClientRegistered, onAdminAccess 
               name="name"
               value={formData.name}
               onChange={handleInputChange}
-              className={`w-full px-4 py-3 bg-zinc-800 border rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors ${
+              className={`w-full px-4 py-3 bg-zinc-800 border rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all-smooth hover-lift ${
                 errors.name ? 'border-red-500' : 'border-zinc-600'
               }`}
               placeholder="Ingresa tu nombre completo"
               disabled={loading}
             />
             {errors.name && (
-              <p className="mt-1 text-sm text-red-400">{errors.name}</p>
+              <p className="mt-1 text-sm text-red-400 animate-fade-in">{errors.name}</p>
             )}
           </div>
           
           {/* Teléfono */}
-          <div>
+          <div className="animate-fade-in stagger-delay-2">
             <label className="block text-sm font-medium text-zinc-300 mb-2">
-              <Phone className="w-4 h-4 inline mr-2" />
+              <Phone className="w-4 h-4 inline mr-2 text-amber-400" />
               Número de teléfono *
             </label>
             <input
@@ -301,21 +301,21 @@ const ClientRegistrationScreen = ({ onGoBack, onClientRegistered, onAdminAccess 
               name="phone"
               value={formData.phone}
               onChange={handleInputChange}
-              className={`w-full px-4 py-3 bg-zinc-800 border rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors ${
+              className={`w-full px-4 py-3 bg-zinc-800 border rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all-smooth hover-lift ${
                 errors.phone ? 'border-red-500' : 'border-zinc-600'
               }`}
               placeholder="+57 300 123 4567"
               disabled={loading}
             />
             {errors.phone && (
-              <p className="mt-1 text-sm text-red-400">{errors.phone}</p>
+              <p className="mt-1 text-sm text-red-400 animate-fade-in">{errors.phone}</p>
             )}
           </div>
           
           {/* Email (opcional) */}
-          <div>
+          <div className="animate-fade-in stagger-delay-3">
             <label className="block text-sm font-medium text-zinc-300 mb-2">
-              <Mail className="w-4 h-4 inline mr-2" />
+              <Mail className="w-4 h-4 inline mr-2 text-amber-400" />
               Email (opcional)
             </label>
             <input
@@ -323,14 +323,14 @@ const ClientRegistrationScreen = ({ onGoBack, onClientRegistered, onAdminAccess 
               name="email"
               value={formData.email}
               onChange={handleInputChange}
-              className={`w-full px-4 py-3 bg-zinc-800 border rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors ${
+              className={`w-full px-4 py-3 bg-zinc-800 border rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all-smooth hover-lift ${
                 errors.email ? 'border-red-500' : 'border-zinc-600'
               }`}
               placeholder="tu@email.com"
               disabled={loading}
             />
             {errors.email && (
-              <p className="mt-1 text-sm text-red-400">{errors.email}</p>
+              <p className="mt-1 text-sm text-red-400 animate-fade-in">{errors.email}</p>
             )}
           </div>
           
@@ -347,7 +347,7 @@ const ClientRegistrationScreen = ({ onGoBack, onClientRegistered, onAdminAccess 
                   }
                 }, 500);
               }}
-              className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors mb-4"
+              className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-all-smooth hover-lift micro-bounce animate-glow mb-4"
             >
               <span>CONTINUAR CON ESTOS DATOS</span>
               <ArrowRight className="w-5 h-5" />
@@ -358,9 +358,9 @@ const ClientRegistrationScreen = ({ onGoBack, onClientRegistered, onAdminAccess 
           <button
             type="submit"
             disabled={!isFormValid || loading}
-            className={`w-full py-4 rounded-lg font-semibold text-lg transition-all flex items-center justify-center gap-2 ${
+            className={`w-full py-4 rounded-lg font-semibold text-lg transition-all-smooth flex items-center justify-center gap-2 hover-lift micro-bounce animate-fade-in stagger-delay-4 ${
               isFormValid && !loading
-                ? 'bg-amber-500 hover:bg-amber-600 text-black'
+                ? 'bg-amber-500 hover:bg-amber-600 text-black hover-glow'
                 : 'bg-zinc-700 text-zinc-500 cursor-not-allowed'
             }`}
           >
@@ -368,8 +368,8 @@ const ClientRegistrationScreen = ({ onGoBack, onClientRegistered, onAdminAccess 
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
             ) : (
               <>
-                <span>{isReturningClient ? 'ACTUALIZAR DATOS' : 'REGISTRARSE'}</span>
-                <ArrowRight className="w-5 h-5" />
+                <span className="animate-fade-in">{isReturningClient ? 'ACTUALIZAR DATOS' : 'REGISTRARSE'}</span>
+                <ArrowRight className="w-5 h-5 animate-fade-in" />
               </>
             )}
           </button>
@@ -377,7 +377,7 @@ const ClientRegistrationScreen = ({ onGoBack, onClientRegistered, onAdminAccess 
         
         {/* Botón para cambiar cliente (solo si es cliente que regresa) */}
         {isReturningClient && (
-          <div className="mt-4 text-center">
+          <div className="mt-4 text-center animate-fade-in stagger-delay-5">
             <button
               type="button"
               onClick={clearClientData}

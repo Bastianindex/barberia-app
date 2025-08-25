@@ -6,6 +6,9 @@
 /* Importar la fuente Inter */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap');
 
+/* Importar animaciones personalizadas */
+@import './styles/animations.css';
+
 html, body, #root {
     height: 100%;
     margin: 0;

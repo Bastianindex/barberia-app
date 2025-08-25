@@ -6,7 +6,8 @@ import {
   Clock,
   User,
   Phone,
-  Scissors
+  Scissors,
+  ArrowRight
 } from 'lucide-react';
 import { doc, getDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
@@ -337,40 +338,40 @@ const AppointmentBookingScreen = ({
   return (
     <div className="min-h-screen bg-zinc-900 text-white">
       {/* Header */}
-      <div className="bg-zinc-800 border-b border-zinc-700 px-4 py-4">
+      <div className="bg-zinc-800 border-b border-zinc-700 px-4 py-4 animate-slide-in-down">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <button
             onClick={onGoBack}
-            className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors"
+            className="flex items-center gap-2 text-zinc-400 hover:text-white transition-all-smooth hover-lift micro-bounce"
           >
             <ChevronLeft className="w-5 h-5" />
             <span>Regresar</span>
           </button>
           
-          <div className="flex items-center gap-2">
-            <Scissors className="w-6 h-6 text-amber-400" />
-            <h1 className="text-lg font-bold">BarberShop</h1>
+          <div className="flex items-center gap-2 animate-glow">
+            <Scissors className="w-6 h-6 text-amber-400 animate-bounce-subtle" />
+            <h1 className="text-lg font-bold text-shimmer">BarberShop</h1>
           </div>
         </div>
       </div>
       
       <div className="max-w-md mx-auto p-6">
         {/* Información del cliente y servicio */}
-        <div className="bg-zinc-800 rounded-lg p-4 mb-6 border border-zinc-700">
-          <h2 className="text-lg font-semibold text-amber-400 mb-4">Resumen de tu cita</h2>
+        <div className="bg-zinc-800 rounded-lg p-4 mb-6 border border-zinc-700 animate-scale-in hover-lift">
+          <h2 className="text-lg font-semibold text-amber-400 mb-4 text-shimmer">Resumen de tu cita</h2>
           
           <div className="space-y-3">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 animate-fade-in" style={{ animationDelay: '200ms', opacity: 0, animationFillMode: 'forwards' }}>
               <User className="w-4 h-4 text-zinc-400" />
               <span className="text-zinc-300">{clientData?.name || 'Cliente'}</span>
             </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 animate-fade-in" style={{ animationDelay: '400ms', opacity: 0, animationFillMode: 'forwards' }}>
               <Phone className="w-4 h-4 text-zinc-400" />
               <span className="text-zinc-300">{clientData?.phone || 'Teléfono'}</span>
             </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 animate-fade-in" style={{ animationDelay: '600ms', opacity: 0, animationFillMode: 'forwards' }}>
               <Scissors className="w-4 h-4 text-zinc-400" />
               <div>
                 <span className="text-white font-medium">{serviceDetails?.name}</span>
@@ -383,9 +384,9 @@ const AppointmentBookingScreen = ({
         </div>
         
         {/* Selección de fecha */}
-        <div className="mb-8">
-          <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-amber-400" />
+        <div className="mb-8 animate-slide-in-left" style={{ animationDelay: '800ms', opacity: 0, animationFillMode: 'forwards' }}>
+          <h3 className="text-xl font-semibold mb-4 flex items-center gap-2 text-shimmer">
+            <Calendar className="w-5 h-5 text-amber-400 animate-bounce-subtle" />
             Selecciona una fecha
           </h3>
           
@@ -394,11 +395,16 @@ const AppointmentBookingScreen = ({
               <button
                 key={index}
                 onClick={() => handleDateSelection(dateObj)}
-                className={`p-4 rounded-lg border-2 transition-all text-left ${
+                className={`p-4 rounded-lg border-2 transition-all-smooth text-left hover-lift micro-bounce animate-fade-in ${
                   isDateSelected(dateObj)
-                    ? 'border-amber-500 bg-amber-500/10 text-white'
+                    ? 'border-amber-300 bg-amber-300/70 text-black animate-glow shadow-xl shadow-amber-400/50'
                     : 'border-zinc-600 bg-zinc-800 hover:border-zinc-500 text-zinc-300 hover:text-white'
                 }`}
+                style={{ 
+                  animationDelay: `${1000 + (index * 100)}ms`, 
+                  opacity: 0, 
+                  animationFillMode: 'forwards' 
+                }}
               >
                 <div className="font-medium">{dateObj.displayName}</div>
                 <div className="text-sm opacity-75">
@@ -410,12 +416,12 @@ const AppointmentBookingScreen = ({
         </div>
         
         {/* Selección de hora */}
-        <div className="mb-8">
-          <h3 className="text-xl font-semibold mb-2 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-amber-400" />
+        <div className="mb-8 animate-slide-in-right" style={{ animationDelay: '1200ms', opacity: 0, animationFillMode: 'forwards' }}>
+          <h3 className="text-xl font-semibold mb-2 flex items-center gap-2 text-shimmer">
+            <Clock className="w-5 h-5 text-amber-400 animate-bounce-subtle" />
             Selecciona una hora
             {selectedDate && (
-              <span className="text-sm text-zinc-400 font-normal">
+              <span className="text-sm text-zinc-400 font-normal animate-fade-in">
                 para {selectedDate.displayName}
               </span>
             )}
@@ -423,10 +429,10 @@ const AppointmentBookingScreen = ({
           
           {/* Leyenda de disponibilidad */}
           {selectedDate && (
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-4 animate-fade-in">
               <div className="flex gap-4 text-xs">
                 <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 border border-zinc-600 bg-zinc-800 rounded"></div>
+                  <div className="w-3 h-3 border border-zinc-600 bg-zinc-800 rounded animate-pulse"></div>
                   <span className="text-zinc-400">Disponible</span>
                 </div>
                 <div className="flex items-center gap-1">
@@ -434,8 +440,8 @@ const AppointmentBookingScreen = ({
                   <span className="text-red-400">Ocupado</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 border border-amber-500 bg-amber-500/10 rounded"></div>
-                  <span className="text-amber-400">Seleccionado</span>
+                  <div className="w-3 h-3 border border-amber-300 bg-amber-300/70 rounded animate-glow"></div>
+                  <span className="text-amber-300">Seleccionado</span>
                 </div>
               </div>
               <div className="text-xs text-zinc-400">
@@ -445,8 +451,8 @@ const AppointmentBookingScreen = ({
           )}
           
           {!selectedDate ? (
-            <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-6 text-center">
-              <Calendar className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
+            <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-6 text-center animate-pulse-glow">
+              <Calendar className="w-8 h-8 text-zinc-600 mx-auto mb-2 animate-bounce-subtle" />
               <p className="text-zinc-400">Primero selecciona una fecha</p>
             </div>
           ) : (
@@ -457,18 +463,23 @@ const AppointmentBookingScreen = ({
                   onClick={() => handleTimeSelection(timeObj)}
                   disabled={!timeObj.available}
                   title={!timeObj.available ? 'Este horario ya está ocupado' : `Reservar cita a las ${timeObj.time12}`}
-                  className={`p-3 rounded-lg border text-sm font-medium transition-all relative ${
+                  className={`p-3 rounded-lg border text-sm font-medium transition-all-smooth relative hover-lift micro-bounce animate-fade-in ${
                     isTimeSelected(timeObj)
-                      ? 'border-amber-500 bg-amber-500/10 text-white'
+                      ? 'border-amber-300 bg-amber-300/70 text-black animate-glow shadow-xl shadow-amber-400/50'
                       : timeObj.available
                       ? 'border-zinc-600 bg-zinc-800 hover:border-zinc-500 text-zinc-300 hover:text-white hover:bg-zinc-700'
                       : 'border-red-600 bg-red-900/30 text-red-400 cursor-not-allowed hover:border-red-500'
                   }`}
+                  style={{ 
+                    animationDelay: `${(index * 50) + 200}ms`, 
+                    opacity: 0, 
+                    animationFillMode: 'forwards' 
+                  }}
                 >
                   <span className={!timeObj.available ? 'opacity-50' : ''}>{timeObj.time12}</span>
                   {!timeObj.available && (
                     <span className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-xs bg-red-800 px-1 rounded font-bold">Ocupado</span>
+                      <span className="text-xs bg-red-800 px-1 rounded font-bold animate-pulse">Ocupado</span>
                     </span>
                   )}
                 </button>
@@ -481,18 +492,35 @@ const AppointmentBookingScreen = ({
         <button
           onClick={handleContinue}
           disabled={!isContinueEnabled}
-          className={`w-full py-4 rounded-lg font-semibold text-lg transition-all ${
+          className={`w-full py-4 rounded-lg font-semibold text-lg transition-all-smooth flex items-center justify-center gap-2 hover-lift micro-bounce animate-slide-in-up ${
             isContinueEnabled
-              ? 'bg-amber-500 hover:bg-amber-600 text-black'
+              ? 'bg-amber-400 hover:bg-amber-500 text-black animate-glow-pulse shadow-lg shadow-amber-400/50'
               : 'bg-zinc-700 text-zinc-500 cursor-not-allowed'
           }`}
+          style={{ 
+            animationDelay: '1400ms', 
+            opacity: 0, 
+            animationFillMode: 'forwards' 
+          }}
         >
-          {isContinueEnabled ? 'AGENDAR CITA' : 'SELECCIONA FECHA Y HORA'}
+          {isContinueEnabled ? (
+            <>
+              <span className="text-shimmer">AGENDAR CITA</span>
+              <ArrowRight className="w-5 h-5 animate-bounce-x" />
+            </>
+          ) : (
+            <span className="animate-pulse">SELECCIONA FECHA Y HORA</span>
+          )}
         </button>
         
         {/* Información adicional */}
-        <div className="mt-6 text-center text-sm text-zinc-400">
-          <p>Tu cita será confirmada inmediatamente</p>
+        <div className="mt-6 text-center text-sm text-zinc-400 animate-fade-in" 
+             style={{ 
+               animationDelay: '1600ms', 
+               opacity: 0, 
+               animationFillMode: 'forwards' 
+             }}>
+          <p className="micro-bounce stagger-delay-1">Tu cita será confirmada inmediatamente</p>
           <p>Puedes cancelar hasta 2 horas antes</p>
         </div>
       </div>
