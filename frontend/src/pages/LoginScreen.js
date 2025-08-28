@@ -1,120 +1,175 @@
 // frontend/src/pages/LoginScreen.js
 import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext'; // Importa el hook de autenticación
-import Notification from '../components/Notification'; // Importa el componente de notificación
-import { LogIn, ChevronLeft } from 'lucide-react'; // Iconos de Lucide
-import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth'; // Importamos Firebase Auth para el registro simulado
+import { useAuth } from '../context/AuthContext';
+import { useForm } from '../hooks/useForm';
+import { useNotification } from '../hooks/useNotification';
+import { validateLogin } from '../utils/validation';
+import Button from '../components/ui/Button';
+import Input from '../components/ui/Input';
+import Card from '../components/ui/Card';
+import LoadingSpinner from '../components/LoadingSpinner';
+import Notification from '../components/Notification';
+import { LogIn, ChevronLeft, Scissors } from 'lucide-react';
+import { ROUTES } from '../constants';
 
 const LoginScreen = ({ onLoginSuccess, onShowSignUp, onGoBack }) => {
-  const { login } = useAuth(); // Obtiene la función de login del contexto
-  const [email, setEmail] = useState('owner@barber.com'); // Estado para el email
-  const [password, setPassword] = useState('password'); // Estado para la contraseña
-  const [notification, setNotification] = useState(null); // Estado para la notificación
-  const [loading, setLoading] = useState(false); // Estado para manejar el loading del login
+  const { signIn } = useAuth();
+  const { notification, showError, showSuccess, hideNotification } = useNotification();
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e) => {
+  const {
+    values,
+    errors,
+    handleChange,
+    handleBlur,
+    validate,
+    reset
+  } = useForm({
+    email: 'owner@barber.com',
+    password: 'password'
+  }, validateLogin);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setNotification(null); // Limpia cualquier notificación previa
-    setLoading(true); // Activa el estado de carga
-
-    const result = await login(email, password); // Intenta iniciar sesión con Firebase Auth
-
-    if (result.success) {
-      setNotification({ message: 'Inicio de sesión exitoso.', type: 'success' });
-      // Después de una pequeña pausa para que el usuario vea la notificación
-      setTimeout(() => onLoginSuccess(), 1000);
-    } else {
-      setNotification({ message: result.error || 'Credenciales incorrectas.', type: 'error' });
+    
+    if (!validate()) {
+      showError('Por favor, corrige los errores en el formulario');
+      return;
     }
-    setLoading(false); // Desactiva el estado de carga
-  };
 
-  const handleSignUpSimulation = async () => {
-    // Esto es solo una SIMULACIÓN de registro para que puedas probar el login real.
-    // EN UN PROYECTO REAL, tendrías una pantalla de registro completa y un backend.
-    setNotification(null);
     setLoading(true);
+    
     try {
-      const authInstance = getAuth(); // Obtiene la instancia de auth
-      await createUserWithEmailAndPassword(authInstance, 'owner@barber.com', 'password');
-      setNotification({ message: 'Usuario de prueba "owner@barber.com" registrado. ¡Ahora puedes iniciar sesión!', type: 'success' });
-      console.log("Usuario de prueba creado en Firebase Auth: owner@barber.com");
-    } catch (error) {
-      if (error.code === 'auth/email-already-in-use') {
-        setNotification({ message: 'El usuario de prueba "owner@barber.com" ya existe. Puedes iniciar sesión.', type: 'info' });
+      const result = await signIn(values.email, values.password);
+      
+      if (result.success) {
+        showSuccess('Inicio de sesión exitoso');
+        setTimeout(() => {
+          onLoginSuccess?.();
+        }, 1000);
       } else {
-        setNotification({ message: `Error al registrar usuario de prueba: ${error.message}`, type: 'error' });
+        showError(result.error || 'Credenciales incorrectas');
       }
-      console.error("Error al registrar usuario de prueba:", error);
+    } catch (error) {
+      showError('Error al iniciar sesión');
+      console.error('Login error:', error);
     } finally {
       setLoading(false);
-      // Simula el comportamiento de onShowSignUp, pero aquí lo usamos para registrar/informar
-      if (onShowSignUp) onShowSignUp();
     }
   };
 
+  const handleTestUserCreation = async () => {
+    if (onShowSignUp) {
+      onShowSignUp();
+    }
+  };
+
+  if (loading) {
+    return (
+      <LoadingSpinner 
+        type="barbershop" 
+        message="Iniciando sesión..." 
+        fullScreen={true}
+      />
+    );
+  }
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-900 text-white p-6">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 text-white p-6">
       {/* Botón de regresar */}
       {onGoBack && (
         <div className="w-full max-w-md mb-4">
-          <button
+          <Button
+            variant="ghost"
             onClick={onGoBack}
-            className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors"
+            className="flex items-center gap-2 text-zinc-400 hover:text-white"
           >
             <ChevronLeft className="w-5 h-5" />
             <span>Regresar</span>
-          </button>
+          </Button>
         </div>
       )}
 
-      <div className="w-full max-w-md bg-zinc-800 p-8 rounded-2xl shadow-xl border border-zinc-700 text-center">
-        <div className="flex items-center justify-center mb-8">
-          <span className="text-6xl mr-2">💈</span>
-          <div>
-            <h1 className="text-4xl font-extrabold">OLIMU</h1>
-            <p className="text-sm text-zinc-400">Panel de Administración</p>
+      <Card className="w-full max-w-md bg-zinc-800/80 backdrop-blur-sm border-zinc-700">
+        {/* Header con branding */}
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center mb-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center mr-4">
+              <Scissors className="w-8 h-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">
+                OLIMU
+              </h1>
+              <p className="text-sm text-zinc-400">Panel de Administración</p>
+            </div>
           </div>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <input
-              type="email"
-              placeholder="E-Mail"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full rounded-md border-zinc-700 bg-zinc-900 text-white shadow-sm focus:border-amber-500 focus:ring-amber-500 p-3"
-              required
-              disabled={loading}
-            />
-          </div>
-          <div>
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full rounded-md border-zinc-700 bg-zinc-900 text-white shadow-sm focus:border-amber-500 focus:ring-amber-500 p-3"
-              required
-              disabled={loading}
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg text-lg transition duration-300 transform hover:-translate-y-1 flex items-center justify-center"
+        {/* Formulario */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <Input
+            type="email"
+            name="email"
+            placeholder="Correo electrónico"
+            value={values.email}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            error={errors.email}
             disabled={loading}
+            required
+          />
+
+          <Input
+            type="password"
+            name="password"
+            placeholder="Contraseña"
+            value={values.password}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            error={errors.password}
+            disabled={loading}
+            required
+          />
+
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={loading}
+            loading={loading}
           >
-            {loading ? 'INGRESANDO...' : <><LogIn size={20} className="mr-2 inline-block" /> LOG IN</>}
-          </button>
+            <LogIn className="w-5 h-5 mr-2" />
+            {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+          </Button>
         </form>
 
-        <div className="mt-6 text-sm flex justify-between">
-          <button className="text-gray-400 hover:text-amber-400" disabled={loading}>Forgot Password?</button>
-          <button onClick={handleSignUpSimulation} className="text-blue-500 hover:text-amber-400 font-semibold" disabled={loading}>New User? SIGN UP</button>
+        {/* Enlaces adicionales */}
+        <div className="mt-6 space-y-3">
+          <div className="text-center">
+            <Button
+              variant="link"
+              onClick={handleTestUserCreation}
+              className="text-sm text-zinc-400 hover:text-amber-400"
+            >
+              ¿No tienes cuenta? Crear usuario de prueba
+            </Button>
+          </div>
+          
+          <div className="text-xs text-zinc-500 text-center">
+            <p>Usuario de prueba: owner@barber.com</p>
+            <p>Contraseña: password</p>
+          </div>
         </div>
-      </div>
-      {notification && <Notification message={notification.message} type={notification.type} onClose={() => setNotification(null)} />}
+      </Card>
+
+      {/* Notificaciones */}
+      {notification && (
+        <Notification
+          message={notification.message}
+          type={notification.type}
+          onClose={hideNotification}
+        />
+      )}
     </div>
   );
 };

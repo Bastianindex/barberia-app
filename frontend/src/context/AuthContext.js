@@ -1,81 +1,242 @@
-// frontend/src/context/AuthContext.js
-// frontend/src/context/AuthContext.js
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
-// eslint-disable-next-line no-unused-vars
-import { auth as firebaseAuth, db } from '../firebase/firebaseConfig'; // Importamos también db
+/**
+ * Context de autenticación refactorizado
+ */
 
-const AuthContext = createContext();
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { onAuthStateChange, signInUser, signOutUser, registerUser } from '../services/authService';
+import { saveUserData, findUserInCollections } from '../services/firestoreService';
+import { COLLECTIONS, USER_ROLES } from '../constants';
 
-// Hook personalizado para usar el contexto de autenticación fácilmente
+// Crear el contexto
+const AuthContext = createContext(null);
+
+/**
+ * Hook para usar el contexto de autenticación
+ * @returns {Object} Context de autenticación
+ */
 export const useAuth = () => {
-  return useContext(AuthContext);
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth debe usarse dentro de AuthProvider');
+  }
+  return context;
 };
 
+/**
+ * Proveedor del contexto de autenticación
+ */
 export const AuthProvider = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState(null); // Almacena el usuario autenticado
-  const [loading, setLoading] = useState(true); // Para saber cuándo el contexto está listo
+  const [currentUser, setCurrentUser] = useState(null);
+  const [userData, setUserData] = useState(null);
+  const [userRole, setUserRole] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Efecto para escuchar cambios en el estado de autenticación de Firebase
+  // Inicializar listener de autenticación
   useEffect(() => {
-    // onAuthStateChanged es una función de Firebase que te notifica cada vez que el estado de autenticación cambia
-    // (ej. el usuario inicia sesión, cierra sesión, el token expira).
-    const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
-      setCurrentUser(user); // Actualiza el estado con el usuario actual de Firebase
-      setLoading(false);    // Indica que la autenticación ha terminado de cargar
-      console.log("AuthContext: Estado de autenticación de Firebase actualizado. Usuario:", user ? user.email : "Ninguno");
+    const unsubscribe = onAuthStateChange(async (user) => {
+      console.log('AuthContext: Estado de autenticación actualizado:', user?.email || 'Sin usuario');
+      
+      setCurrentUser(user);
+      
+      if (user) {
+        // Buscar datos del usuario en Firestore
+        try {
+          const userDataResult = await findUserInCollections(user.uid);
+          if (userDataResult.success) {
+            setUserData(userDataResult.data);
+            setUserRole(userDataResult.role);
+          } else {
+            console.warn('Usuario no encontrado en Firestore:', user.uid);
+            setUserData(null);
+            setUserRole(null);
+          }
+        } catch (error) {
+          console.error('Error obteniendo datos del usuario:', error);
+          setUserData(null);
+          setUserRole(null);
+        }
+      } else {
+        setUserData(null);
+        setUserRole(null);
+      }
+      
+      setLoading(false);
     });
 
-    // La función que retorna useEffect se ejecuta cuando el componente se desmonta.
-    // Esto limpia el "listener" de onAuthStateChanged para evitar fugas de memoria.
     return unsubscribe;
-  }, []); // Se ejecuta solo una vez al montar el componente
+  }, []);
 
-  // Función de login con Firebase
-  const login = async (email, password) => {
+  /**
+   * Inicia sesión
+   */
+  const login = useCallback(async (email, password) => {
     try {
-      // signInWithEmailAndPassword es la función real de Firebase para iniciar sesión
-      await signInWithEmailAndPassword(firebaseAuth, email, password);
-      // Si tiene éxito, onAuthStateChanged actualizará currentUser automáticamente
-      return { success: true };
-    } catch (error) {
-      console.error("Error al iniciar sesión:", error.message);
-      let errorMessage = "Error desconocido al iniciar sesión.";
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-        errorMessage = "Credenciales incorrectas. Si no tienes una cuenta, regístrate.";
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = "Correo electrónico no válido.";
+      setLoading(true);
+      const result = await signInUser(email, password);
+      
+      if (result.success) {
+        // Los datos del usuario se actualizarán automáticamente por onAuthStateChange
+        return { success: true };
       }
-      return { success: false, error: errorMessage };
-    }
-  };
-
-  // Función de logout con Firebase
-  const logout = async () => {
-    try {
-      await signOut(firebaseAuth); // signOut es la función real de Firebase para cerrar sesión
-      // onAuthStateChanged actualizará currentUser a null automáticamente
-      return { success: true };
+      
+      return result;
     } catch (error) {
-      console.error("Error al cerrar sesión:", error.message);
-      return { success: false, error: "Error al cerrar sesión." };
+      console.error('Error en login:', error);
+      return { success: false, error: 'Error inesperado al iniciar sesión' };
+    } finally {
+      setLoading(false);
     }
-  };
+  }, []);
 
-  // El valor que se proporciona al contexto y que estará disponible para todos los componentes
+  /**
+   * Cierra sesión
+   */
+  const logout = useCallback(async () => {
+    try {
+      const result = await signOutUser();
+      if (result.success) {
+        setCurrentUser(null);
+        setUserData(null);
+        setUserRole(null);
+      }
+      return result;
+    } catch (error) {
+      console.error('Error en logout:', error);
+      return { success: false, error: 'Error al cerrar sesión' };
+    }
+  }, []);
+
+  /**
+   * Registra un cliente
+   */
+  const registerClient = useCallback(async (clientData) => {
+    try {
+      setLoading(true);
+      
+      // Registrar en Firebase Auth
+      const authResult = await registerUser(
+        clientData.email, 
+        clientData.password, 
+        clientData.name
+      );
+      
+      if (!authResult.success) {
+        return authResult;
+      }
+
+      // Guardar datos en Firestore
+      const firestoreData = {
+        name: clientData.name,
+        phone: clientData.phone,
+        email: clientData.email,
+        role: USER_ROLES.CLIENT,
+        emailVerified: false,
+        isActive: true
+      };
+
+      const saveResult = await saveUserData(
+        authResult.user.uid, 
+        firestoreData, 
+        COLLECTIONS.CLIENTS
+      );
+
+      if (!saveResult.success) {
+        return saveResult;
+      }
+
+      return {
+        success: true,
+        message: 'Cliente registrado exitosamente',
+        user: authResult.user
+      };
+    } catch (error) {
+      console.error('Error en registerClient:', error);
+      return { success: false, error: 'Error inesperado al registrar cliente' };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  /**
+   * Registra un administrador
+   */
+  const registerAdmin = useCallback(async (adminData, adminCode) => {
+    try {
+      setLoading(true);
+      
+      // Validar código de admin (puedes cambiar esto)
+      if (adminCode !== 'OLIMU_ADMIN_2024') {
+        return { success: false, error: 'Código de administrador inválido' };
+      }
+
+      // Registrar en Firebase Auth
+      const authResult = await registerUser(
+        adminData.email, 
+        adminData.password, 
+        adminData.name
+      );
+      
+      if (!authResult.success) {
+        return authResult;
+      }
+
+      // Guardar datos en Firestore
+      const firestoreData = {
+        name: adminData.name,
+        email: adminData.email,
+        role: USER_ROLES.ADMIN,
+        emailVerified: false,
+        isActive: true,
+        permissions: ['dashboard', 'appointments', 'clients', 'services']
+      };
+
+      const saveResult = await saveUserData(
+        authResult.user.uid, 
+        firestoreData, 
+        COLLECTIONS.ADMINS
+      );
+
+      if (!saveResult.success) {
+        return saveResult;
+      }
+
+      return {
+        success: true,
+        message: 'Administrador registrado exitosamente',
+        user: authResult.user
+      };
+    } catch (error) {
+      console.error('Error en registerAdmin:', error);
+      return { success: false, error: 'Error inesperado al registrar administrador' };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Valores del contexto
   const value = {
-    currentUser, // El objeto de usuario de Firebase (o null si no hay sesión)
-    login,       // Nuestra función para iniciar sesión
-    logout,      // Nuestra función para cerrar sesión
-    loading,     // Indica si el estado inicial de autenticación aún se está cargando
-    db,          // Instancia de Firestore
-    userId: currentUser?.uid || null, // ID del usuario actual
-    isAuthReady: !loading // Indica si la autenticación está lista
+    // Estado
+    currentUser,
+    userData,
+    userRole,
+    loading,
+    
+    // Computed values
+    isAuthenticated: !!currentUser,
+    isClient: userRole === USER_ROLES.CLIENT,
+    isAdmin: userRole === USER_ROLES.ADMIN,
+    userId: currentUser?.uid || null,
+    
+    // Funciones
+    login,
+    logout,
+    registerClient,
+    registerAdmin
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children} {/* Renderiza los hijos solo cuando el estado de autenticación inicial ha cargado */}
+      {children}
     </AuthContext.Provider>
   );
 };

@@ -1,29 +1,77 @@
 // frontend/src/components/ConfirmationModal.js
 import React from 'react';
+import Button from './ui/Button';
+import Card from './ui/Card';
+import { AlertTriangle } from 'lucide-react';
 
-// Componente para mostrar un modal de confirmación
-const ConfirmationModal = ({ message, onConfirm, onCancel, confirmText = "Confirmar", cancelText = "Cancelar", showCancelButton = true }) => {
+/**
+ * Modal de confirmación refactorizado usando nuevos componentes UI
+ */
+const ConfirmationModal = ({ 
+  message, 
+  onConfirm, 
+  onCancel, 
+  confirmText = "Confirmar", 
+  cancelText = "Cancelar", 
+  showCancelButton = true,
+  type = 'warning',
+  title = 'Confirmar acción'
+}) => {
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget && onCancel) {
+      onCancel();
+    }
+  };
+
+  const getIcon = () => {
+    switch (type) {
+      case 'danger':
+        return <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />;
+      case 'warning':
+        return <AlertTriangle className="w-12 h-12 text-amber-400 mx-auto mb-4" />;
+      default:
+        return null;
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-      <div className="bg-zinc-800 p-8 rounded-2xl shadow-xl border border-zinc-700 max-w-sm w-full text-white text-center">
-        <div className="mb-6">{message}</div> {/* Cambiado de <p> a <div> para permitir contenido JSX */}
-        <div className="flex justify-center space-x-4">
-          {showCancelButton && ( // Muestra el botón de cancelar si showCancelButton es true
-            <button
-              onClick={onCancel}
-              className="bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-2 px-5 rounded-lg transition duration-200"
+    <div 
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in"
+      onClick={handleBackdropClick}
+    >
+      <Card className="max-w-md w-full bg-zinc-800 border-zinc-700 animate-scale-in">
+        <div className="text-center">
+          {getIcon()}
+          
+          <h3 className="text-lg font-semibold text-white mb-2">
+            {title}
+          </h3>
+          
+          <div className="text-zinc-300 mb-6">
+            {message}
+          </div>
+
+          <div className="flex justify-center gap-3">
+            {showCancelButton && (
+              <Button
+                variant="secondary"
+                onClick={onCancel}
+                className="min-w-[100px]"
+              >
+                {cancelText}
+              </Button>
+            )}
+            
+            <Button
+              variant={type === 'danger' ? 'danger' : 'primary'}
+              onClick={onConfirm}
+              className="min-w-[100px]"
             >
-              {cancelText} {/* Texto del botón de cancelar */}
-            </button>
-          )}
-          <button
-            onClick={onConfirm}
-            className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-5 rounded-lg transition duration-200"
-          >
-            {confirmText} {/* Texto del botón de confirmar */}
-          </button>
+              {confirmText}
+            </Button>
+          </div>
         </div>
-      </div>
+      </Card>
     </div>
   );
 };
