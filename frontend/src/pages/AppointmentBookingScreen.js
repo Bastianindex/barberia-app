@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { useNotification } from '../hooks/useNotification';
 import { createAppointment, getUserData } from '../services/firestoreService';
+import { getDocs, collection, query, where } from 'firebase/firestore';
+import { db } from '../firebase/firebaseConfig';
 import { COLLECTIONS } from '../constants';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
@@ -31,6 +33,7 @@ const AppointmentBookingScreen = ({
   const [selectedTime, setSelectedTime] = useState(null);
   const [availableDates, setAvailableDates] = useState([]);
   const [availableTimes, setAvailableTimes] = useState([]);
+  const [existingAppointments, setExistingAppointments] = useState([]);
   const [serviceDetails, setServiceDetails] = useState(selectedService);
   const [loading, setLoading] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -72,15 +75,76 @@ const AppointmentBookingScreen = ({
   // Generar horarios disponibles cuando se selecciona una fecha
   useEffect(() => {
     if (selectedDate) {
-      generateAvailableTimes(selectedDate);
+      generateAvailableTimes(selectedDate).catch(error => {
+        console.error('❌ Error generando horarios:', error);
+        setAvailableTimes([]);
+      });
     }
   }, [selectedDate]);
 
-  // Generar horarios disponibles
-  const generateAvailableTimes = (date) => {
+  // Obtener citas existentes para una fecha específica
+  const getExistingAppointments = async (dateString) => {
+    try {
+      console.log('🔍 Obteniendo citas existentes para:', dateString);
+      
+      const appointmentsRef = collection(db, 'appointments');
+      const q = query(
+        appointmentsRef, 
+        where('appointmentDate', '==', dateString),
+        where('status', 'in', ['confirmed', 'pending']) // Solo citas activas
+      );
+      
+      const snapshot = await getDocs(q);
+      const appointments = [];
+      
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        appointments.push({
+          id: doc.id,
+          appointmentTime: data.appointmentTime,
+          appointmentDateTime: data.appointmentDateTime,
+          serviceDuration: data.serviceDuration || 30
+        });
+      });
+      
+      console.log('📅 Citas encontradas:', appointments);
+      setExistingAppointments(appointments);
+      return appointments;
+      
+    } catch (error) {
+      console.error('❌ Error obteniendo citas existentes:', error);
+      setExistingAppointments([]);
+      return [];
+    }
+  };
+
+  // Verificar si un horario está ocupado
+  const isTimeSlotOccupied = (timeSlot, serviceDuration, existingAppts) => {
+    const slotStart = new Date(timeSlot);
+    const slotEnd = new Date(slotStart);
+    slotEnd.setMinutes(slotEnd.getMinutes() + serviceDuration);
+    
+    return existingAppts.some(appointment => {
+      const appointmentStart = new Date(appointment.appointmentDateTime);
+      const appointmentEnd = new Date(appointmentStart);
+      appointmentEnd.setMinutes(appointmentEnd.getMinutes() + appointment.serviceDuration);
+      
+      // Verificar si hay solapamiento
+      return (slotStart < appointmentEnd) && (slotEnd > appointmentStart);
+    });
+  };
+
+  // Generar horarios disponibles considerando citas existentes
+  const generateAvailableTimes = async (date) => {
+    console.log('⏰ Generando horarios para:', date.dateString);
+    
+    // Obtener citas existentes para esta fecha
+    const existingAppts = await getExistingAppointments(date.dateString);
+    
     const times = [];
     const selectedDateObj = new Date(date.dateString);
     const now = new Date();
+    const serviceDuration = serviceDetails?.duration || 30;
     
     // Horarios de trabajo: 9:00 AM - 7:00 PM
     const workingHours = {
@@ -98,9 +162,12 @@ const AppointmentBookingScreen = ({
           continue;
         }
 
-        // Agregar duración del servicio para verificar disponibilidad
+        // Verificar si el horario está ocupado
+        const isOccupied = isTimeSlotOccupied(timeSlot, serviceDuration, existingAppts);
+        
+        // Agregar duración del servicio para mostrar cuando termina
         const endTime = new Date(timeSlot);
-        endTime.setMinutes(endTime.getMinutes() + (serviceDetails?.duration || 30));
+        endTime.setMinutes(endTime.getMinutes() + serviceDuration);
 
         times.push({
           time: timeSlot,
@@ -110,11 +177,13 @@ const AppointmentBookingScreen = ({
             hour12: true 
           }),
           endTime: endTime,
-          available: true // En una implementación real, verificaríamos contra citas existentes
+          available: !isOccupied,
+          occupied: isOccupied
         });
       }
     }
 
+    console.log('⏰ Horarios generados:', times.length, 'disponibles:', times.filter(t => t.available).length);
     setAvailableTimes(times);
   };
 
@@ -135,6 +204,10 @@ const AppointmentBookingScreen = ({
       showError('Por favor, selecciona fecha y hora');
       return;
     }
+    if (!serviceDetails || !serviceDetails.id) {
+      showError('Error: Datos del servicio no disponibles');
+      return;
+    }
     setShowConfirmModal(true);
   };
 
@@ -144,15 +217,28 @@ const AppointmentBookingScreen = ({
     setLoading(true);
 
     try {
+      console.log('=== CONFIRMANDO CITA ===');
+      console.log('clientData:', clientData);
+      console.log('clientData.id:', clientData?.id);
+      console.log('serviceDetails:', serviceDetails);
+      console.log('selectedDate:', selectedDate);
+      console.log('selectedTime:', selectedTime);
+
+      // Validar que tenemos el ID del cliente
+      if (!clientData?.id) {
+        console.error('ERROR: clientData.id está undefined');
+        throw new Error('ID de cliente no válido. Por favor, regístrate nuevamente.');
+      }
+
       const appointmentData = {
         clientId: clientData.id,
         clientName: clientData.name,
         clientPhone: clientData.phone,
         clientEmail: clientData.email || null,
-        serviceId: serviceDetails.id,
-        serviceName: serviceDetails.name,
-        servicePrice: serviceDetails.price,
-        serviceDuration: serviceDetails.duration,
+        serviceId: serviceDetails?.id,
+        serviceName: serviceDetails?.name,
+        servicePrice: serviceDetails?.price,
+        serviceDuration: serviceDetails?.duration,
         appointmentDate: selectedDate.dateString,
         appointmentTime: selectedTime.timeString,
         appointmentDateTime: selectedTime.time.toISOString(),
@@ -162,7 +248,11 @@ const AppointmentBookingScreen = ({
         updatedAt: new Date().toISOString()
       };
 
+      console.log('Datos de la cita a crear:', appointmentData);
+
       const appointmentRef = await createAppointment(appointmentData);
+      
+      console.log('Cita creada exitosamente:', appointmentRef);
       
       showSuccess('¡Cita agendada exitosamente!');
       
@@ -303,12 +393,17 @@ const AppointmentBookingScreen = ({
                       ? 'border-amber-500 bg-amber-500/20 text-amber-400'
                       : time.available
                         ? 'border-zinc-600 bg-zinc-700/50 text-zinc-300 hover:border-zinc-500'
-                        : 'border-zinc-700 bg-zinc-800/50 text-zinc-500 cursor-not-allowed'
+                        : 'border-red-700 bg-red-800/50 text-red-400 cursor-not-allowed'
                   }`}
                 >
                   <div className="text-sm font-medium">
                     {time.timeString}
                   </div>
+                  {time.occupied && (
+                    <div className="text-xs text-red-400 mt-1">
+                      Ocupado
+                    </div>
+                  )}
                 </button>
               ))}
             </div>

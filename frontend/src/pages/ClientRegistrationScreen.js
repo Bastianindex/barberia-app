@@ -80,41 +80,71 @@ const ClientRegistrationScreen = ({ onGoBack, onClientRegistered, onAdminAccess 
     setLoading(true);
 
     try {
+      console.log('=== INICIO REGISTRO CLIENTE ===');
+      console.log('Datos del formulario:', formData);
+      
       // Verificar si el cliente ya existe
       const existingClient = await findUserInCollections(
         formData.email || formData.phone,
         ['email', 'phone']
       );
 
+      console.log('Resultado búsqueda cliente existente:', existingClient);
+
       let clientData = {
         ...formData,
         lastVisit: new Date().toISOString(),
-        registrationDate: existingClient ? existingClient.registrationDate : new Date().toISOString(),
-        totalAppointments: existingClient ? (existingClient.totalAppointments || 0) + 1 : 1
+        registrationDate: existingClient.success ? existingClient.data.registrationDate : new Date().toISOString(),
+        totalAppointments: existingClient.success ? (existingClient.data.totalAppointments || 0) + 1 : 1,
+        role: 'client',
+        isActive: true,
+        emailVerified: false
       };
 
-      if (existingClient) {
+      console.log('Datos del cliente a guardar:', clientData);
+
+      let result;
+      
+      if (existingClient.success) {
         // Actualizar cliente existente
-        await saveUserData(existingClient.id, clientData, COLLECTIONS.CLIENTS);
-        showSuccess(`¡Bienvenido de vuelta, ${formData.name}!`);
+        console.log('Actualizando cliente existente con ID:', existingClient.id);
+        result = await saveUserData(existingClient.id, clientData, COLLECTIONS.CLIENTS);
+        if (result.success) {
+          clientData.id = existingClient.id;
+          showSuccess(`¡Bienvenido de vuelta, ${formData.name}!`);
+        }
       } else {
         // Crear nuevo cliente
-        const docRef = await saveUserData(null, clientData, COLLECTIONS.CLIENTS);
-        clientData.id = docRef.id;
-        showSuccess(`¡Bienvenido, ${formData.name}! Cliente registrado exitosamente.`);
+        console.log('Creando nuevo cliente...');
+        result = await saveUserData(null, clientData, COLLECTIONS.CLIENTS);
+        if (result.success) {
+          clientData.id = result.id;
+          console.log('Cliente creado con ID:', result.id);
+          showSuccess(`¡Bienvenido, ${formData.name}! Cliente registrado exitosamente.`);
+        }
+      }
+
+      console.log('Resultado de saveUserData:', result);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Error al guardar datos');
       }
 
       // Guardar datos en localStorage para futuras visitas
       localStorage.setItem('olimubarbershop_client', JSON.stringify(clientData));
+      console.log('Datos guardados en localStorage:', clientData);
 
       // Notificar al componente padre y continuar al siguiente paso
       setTimeout(() => {
         onClientRegistered?.(clientData);
       }, 1500);
 
+      console.log('=== FIN REGISTRO CLIENTE EXITOSO ===');
+
     } catch (error) {
-      console.error('Error al registrar cliente:', error);
-      showError('Error al procesar el registro. Inténtalo de nuevo.');
+      console.error('=== ERROR EN REGISTRO CLIENTE ===');
+      console.error('Error completo:', error);
+      showError(`Error al procesar el registro: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -195,7 +225,7 @@ const ClientRegistrationScreen = ({ onGoBack, onClientRegistered, onAdminAccess 
                 onBlur={handleBlur}
                 error={errors.name}
                 disabled={loading}
-                icon={<User className="w-5 h-5" />}
+                icon={User}
                 required
               />
 
@@ -208,7 +238,7 @@ const ClientRegistrationScreen = ({ onGoBack, onClientRegistered, onAdminAccess 
                 onBlur={handleBlur}
                 error={errors.phone}
                 disabled={loading}
-                icon={<Phone className="w-5 h-5" />}
+                icon={Phone}
                 required
               />
 
@@ -221,7 +251,7 @@ const ClientRegistrationScreen = ({ onGoBack, onClientRegistered, onAdminAccess 
                 onBlur={handleBlur}
                 error={errors.email}
                 disabled={loading}
-                icon={<Mail className="w-5 h-5" />}
+                icon={Mail}
               />
             </div>
 
@@ -267,6 +297,20 @@ const ClientRegistrationScreen = ({ onGoBack, onClientRegistered, onAdminAccess 
             type={notification.type}
             onClose={hideNotification}
           />
+        )}
+
+        {/* Botón de acceso administrativo - Más visible */}
+        {onAdminAccess && (
+          <div className="mt-8 text-center">
+            <Button
+              variant="ghost"
+              onClick={onAdminAccess}
+              className="text-zinc-500 hover:text-amber-400 text-sm"
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Acceso Administrativo
+            </Button>
+          </div>
         )}
       </div>
     </div>

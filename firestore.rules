@@ -18,6 +18,16 @@ service cloud.firestore {
       allow read, write: if true;
     }
     
+    // Permitir lectura/escritura pública de analytics
+    match /business_analytics/{analyticsId} {
+      allow read, write: if true;
+    }
+    
+    // Permitir lectura/escritura pública de admins
+    match /admins/{adminId} {
+      allow read, write: if true;
+    }
+    
     // Colecciones administrativas solo para usuarios autenticados
     match /machines/{machineId} {
       allow read, write: if request.auth != null;

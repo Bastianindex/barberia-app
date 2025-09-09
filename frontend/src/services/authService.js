@@ -7,7 +7,6 @@ import {
   signOut, 
   onAuthStateChanged,
   createUserWithEmailAndPassword,
-  sendEmailVerification,
   updateProfile
 } from 'firebase/auth';
 import { auth } from '../firebase/firebaseConfig';
@@ -84,27 +83,6 @@ export const registerUser = async (email, password, displayName) => {
     };
   } catch (error) {
     console.error('Error en registerUser:', error);
-    return { 
-      success: false, 
-      error: handleAuthError(error) 
-    };
-  }
-};
-
-/**
- * Envía email de verificación
- * @param {User} user - Usuario de Firebase
- * @returns {Promise<AuthResult>}
- */
-export const sendVerificationEmail = async (user) => {
-  try {
-    await sendEmailVerification(user);
-    return { 
-      success: true, 
-      message: 'Email de verificación enviado' 
-    };
-  } catch (error) {
-    console.error('Error en sendVerificationEmail:', error);
     return { 
       success: false, 
       error: handleAuthError(error) 

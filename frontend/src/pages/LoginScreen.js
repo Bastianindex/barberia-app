@@ -13,7 +13,7 @@ import { LogIn, ChevronLeft, Scissors } from 'lucide-react';
 import { ROUTES } from '../constants';
 
 const LoginScreen = ({ onLoginSuccess, onShowSignUp, onGoBack }) => {
-  const { signIn } = useAuth();
+  const { login, registerAdmin } = useAuth();
   const { notification, showError, showSuccess, hideNotification } = useNotification();
   const [loading, setLoading] = useState(false);
 
@@ -40,7 +40,7 @@ const LoginScreen = ({ onLoginSuccess, onShowSignUp, onGoBack }) => {
     setLoading(true);
     
     try {
-      const result = await signIn(values.email, values.password);
+      const result = await login(values.email, values.password);
       
       if (result.success) {
         showSuccess('Inicio de sesión exitoso');
@@ -53,6 +53,35 @@ const LoginScreen = ({ onLoginSuccess, onShowSignUp, onGoBack }) => {
     } catch (error) {
       showError('Error al iniciar sesión');
       console.error('Login error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateAdmin = async () => {
+    setLoading(true);
+    
+    try {
+      const result = await registerAdmin(
+        'owner@barber.com',
+        'password',
+        {
+          name: 'Administrador OLIMU',
+          role: 'admin'
+        }
+      );
+      
+      if (result.success) {
+        showSuccess('Usuario administrador creado exitosamente');
+        setTimeout(() => {
+          onLoginSuccess?.();
+        }, 1000);
+      } else {
+        showError(result.error || 'Error al crear usuario administrador');
+      }
+    } catch (error) {
+      showError('Error al crear usuario administrador');
+      console.error('Admin creation error:', error);
     } finally {
       setLoading(false);
     }
@@ -140,6 +169,17 @@ const LoginScreen = ({ onLoginSuccess, onShowSignUp, onGoBack }) => {
           >
             <LogIn className="w-5 h-5 mr-2" />
             {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+          </Button>
+
+          {/* Botón temporal para crear admin */}
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={handleCreateAdmin}
+            disabled={loading}
+          >
+            Crear Usuario Admin (Temporal)
           </Button>
         </form>
 

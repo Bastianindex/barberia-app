@@ -26,7 +26,7 @@ import ManageServices from './ManageServices';
 import ClientsAnalytics from './ClientsAnalytics';
 
 const AdminLayout = () => {
-  const { currentUser, signOut } = useAuth();
+  const { currentUser, logout } = useAuth();
   const { notification, showSuccess, showError, hideNotification } = useNotification();
   
   const [activeContent, setActiveContent] = useState('dashboard');
@@ -66,7 +66,7 @@ const AdminLayout = () => {
     setShowLogoutModal(false);
     
     try {
-      await signOut();
+      await logout();
       showSuccess('Sesión cerrada exitosamente');
     } catch (error) {
       console.error('Error al cerrar sesión:', error);

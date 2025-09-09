@@ -62,10 +62,10 @@ const ClientsAnalytics = () => {
       // Suscribirse a clientes
       const clientsQuery = query(collection(db, 'clients'), orderBy('name'));
       const unsubClients = onSnapshot(clientsQuery, (snapshot) => {
-        const clientsData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
+        const clientsData = snapshot.docs.map(doc => {
+          const data = { id: doc.id, ...doc.data() };
+          return data.id && data.name ? data : null;
+        }).filter(Boolean);
         setClients(clientsData);
       });
       unsubscribes.push(unsubClients);
@@ -73,10 +73,10 @@ const ClientsAnalytics = () => {
       // Suscribirse a citas
       const appointmentsQuery = query(collection(db, 'appointments'));
       const unsubAppointments = onSnapshot(appointmentsQuery, (snapshot) => {
-        const appointmentsData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
+        const appointmentsData = snapshot.docs.map(doc => {
+          const data = { id: doc.id, ...doc.data() };
+          return data.id && data.clientId ? data : null;
+        }).filter(Boolean);
         setAppointments(appointmentsData);
       });
       unsubscribes.push(unsubAppointments);
@@ -84,10 +84,10 @@ const ClientsAnalytics = () => {
       // Suscribirse a servicios
       const servicesQuery = query(collection(db, 'services'));
       const unsubServices = onSnapshot(servicesQuery, (snapshot) => {
-        const servicesData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
+        const servicesData = snapshot.docs.map(doc => {
+          const data = { id: doc.id, ...doc.data() };
+          return data.id && data.name ? data : null;
+        }).filter(Boolean);
         setServices(servicesData);
         setLoading(false);
       });
@@ -101,47 +101,10 @@ const ClientsAnalytics = () => {
       showError('Error al cargar los datos');
       setLoading(false);
       
-      // Datos de ejemplo
-      setClients([
-        {
-          id: '1',
-          name: 'Juan Pérez',
-          email: 'juan@email.com',
-          phone: '3001234567',
-          createdAt: { toDate: () => new Date('2024-01-15') },
-          isVip: true
-        },
-        {
-          id: '2',
-          name: 'María García',
-          email: 'maria@email.com',
-          phone: '3007654321',
-          createdAt: { toDate: () => new Date('2024-02-20') },
-          isVip: false
-        }
-      ]);
-      setAppointments([
-        {
-          id: '1',
-          clientId: '1',
-          serviceId: 'service1',
-          date: { toDate: () => new Date('2024-03-15') },
-          status: 'completed',
-          totalPrice: 25000
-        },
-        {
-          id: '2',
-          clientId: '1',
-          serviceId: 'service2',
-          date: { toDate: () => new Date('2024-03-20') },
-          status: 'completed',
-          totalPrice: 15000
-        }
-      ]);
-      setServices([
-        { id: 'service1', name: 'Corte + Barba', price: 25000 },
-        { id: 'service2', name: 'Corte Clásico', price: 15000 }
-      ]);
+      // Inicializar con datos vacíos
+      setClients([]);
+      setAppointments([]);
+      setServices([]);
     }
   }, [db, isAuthReady, showError]);
 
@@ -230,9 +193,9 @@ const ClientsAnalytics = () => {
     // Filtro por búsqueda
     if (searchTerm) {
       filtered = filtered.filter(client => 
-        client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        client.phone?.includes(searchTerm)
+        (client.name && client.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (client.phone && client.phone.includes(searchTerm))
       );
     }
 
@@ -447,7 +410,7 @@ const ClientsAnalytics = () => {
             placeholder="Buscar clientes..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            icon={<Search className="w-4 h-4" />}
+            icon={Search}
           />
           
           <select
@@ -493,11 +456,11 @@ const ClientsAnalytics = () => {
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center">
                     <span className="text-white font-bold text-lg">
-                      {client.name.charAt(0).toUpperCase()}
+                      {client.name ? client.name.charAt(0).toUpperCase() : '?'}
                     </span>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-white">{client.name}</h3>
+                    <h3 className="font-semibold text-white">{client.name || 'Cliente sin nombre'}</h3>
                     <div className="flex items-center gap-2">
                       {client.isVip && (
                         <div className="flex items-center gap-1 text-xs text-amber-400">

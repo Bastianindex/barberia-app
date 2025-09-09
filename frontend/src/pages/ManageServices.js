@@ -42,6 +42,7 @@ const ManageServices = () => {
   const [services, setServices] = useState([]);
   const [filteredServices, setFilteredServices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false); // Nuevo estado para operaciones de guardado
   const [showForm, setShowForm] = useState(false);
   const [editingService, setEditingService] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -95,65 +96,59 @@ const ManageServices = () => {
 
   // Cargar servicios
   useEffect(() => {
-    if (!db || !isAuthReady) return;
+    if (!db || !isAuthReady) {
+      console.log('⏳ Esperando DB o Auth:', { db: !!db, isAuthReady });
+      return;
+    }
 
+    console.log('🔄 Iniciando carga de servicios...');
     setLoading(true);
     
+    // Timeout de seguridad para evitar loading infinito
+    const loadingTimeout = setTimeout(() => {
+      console.log('⚠️ Timeout de carga - forzando fin de loading');
+      setLoading(false);
+      showError('Timeout al cargar servicios. Intenta recargar la página.');
+    }, 10000); // 10 segundos
+
     try {
       const servicesQuery = query(
         collection(db, 'services'),
         orderBy('name')
       );
 
-      const unsubscribe = onSnapshot(servicesQuery, (snapshot) => {
-        const servicesData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        
-        setServices(servicesData);
-        setLoading(false);
-      });
-
-      return () => unsubscribe();
-    } catch (error) {
-      console.error('Error loading services:', error);
-      showError('Error al cargar los servicios');
-      setLoading(false);
-      
-      // Servicios de ejemplo
-      setServices([
-        {
-          id: '1',
-          name: 'Corte Clásico',
-          description: 'Corte tradicional con tijera y máquina',
-          price: 15000,
-          duration: 30,
-          category: 'corte',
-          isActive: true,
-          isPopular: true
+      const unsubscribe = onSnapshot(servicesQuery, 
+        (snapshot) => {
+          console.log('📦 Servicios recibidos:', snapshot.docs.length);
+          clearTimeout(loadingTimeout); // Cancelar timeout si llegaron datos
+          
+          const servicesData = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          
+          setServices(servicesData);
+          setLoading(false);
         },
-        {
-          id: '2',
-          name: 'Corte + Barba',
-          description: 'Corte completo más arreglo de barba',
-          price: 25000,
-          duration: 45,
-          category: 'corte',
-          isActive: true,
-          isPopular: true
-        },
-        {
-          id: '3',
-          name: 'Solo Barba',
-          description: 'Arreglo y perfilado de barba',
-          price: 12000,
-          duration: 20,
-          category: 'barba',
-          isActive: true,
-          isPopular: false
+        (error) => {
+          console.error('❌ Error en onSnapshot:', error);
+          clearTimeout(loadingTimeout);
+          showError(`Error al cargar servicios: ${error.message}`);
+          setLoading(false);
+          setServices([]);
         }
-      ]);
+      );
+
+      return () => {
+        clearTimeout(loadingTimeout);
+        unsubscribe();
+      };
+    } catch (error) {
+      console.error('❌ Error configurando listener:', error);
+      clearTimeout(loadingTimeout);
+      showError(`Error al configurar servicios: ${error.message}`);
+      setLoading(false);
+      setServices([]);
     }
   }, [db, isAuthReady, showError]);
 
@@ -194,6 +189,8 @@ const ManageServices = () => {
     }
 
     try {
+      setSaving(true); // Usar estado separado para guardado
+      
       const serviceData = {
         name: formData.name.trim(),
         description: formData.description.trim(),
@@ -206,17 +203,21 @@ const ManageServices = () => {
       };
 
       if (editingService) {
+        console.log('🔄 Actualizando servicio:', editingService.id, serviceData);
         await updateDoc(doc(db, 'services', editingService.id), serviceData);
         showSuccess('Servicio actualizado exitosamente');
       } else {
+        console.log('➕ Creando nuevo servicio:', serviceData);
         await addDoc(collection(db, 'services'), serviceData);
         showSuccess('Servicio creado exitosamente');
       }
 
       handleCloseForm();
     } catch (error) {
-      console.error('Error saving service:', error);
-      showError('Error al guardar el servicio');
+      console.error('❌ Error saving service:', error);
+      showError(`Error al guardar el servicio: ${error.message}`);
+    } finally {
+      setSaving(false); // Asegurar que siempre se quite el loading de guardado
     }
   };
 
@@ -236,9 +237,23 @@ const ManageServices = () => {
 
   // Cerrar formulario
   const handleCloseForm = () => {
-    setShowForm(false);
-    setEditingService(null);
-    reset();
+    try {
+      console.log('🔄 Cerrando formulario...');
+      setShowForm(false);
+      setEditingService(null);
+      
+      // Asegurar que reset funcione correctamente
+      if (typeof reset === 'function') {
+        reset();
+      }
+      
+      console.log('✅ Formulario cerrado correctamente');
+    } catch (error) {
+      console.error('❌ Error cerrando formulario:', error);
+      // Forzar el cierre manual si hay error
+      setShowForm(false);
+      setEditingService(null);
+    }
   };
 
   // Confirmar eliminación
@@ -297,11 +312,32 @@ const ManageServices = () => {
 
   if (loading) {
     return (
-      <LoadingSpinner 
-        type="barbershop" 
-        message="Cargando servicios..." 
-        fullScreen={true}
-      />
+      <div className="min-h-screen bg-zinc-900 flex items-center justify-center">
+        <div className="text-center space-y-6">
+          <LoadingSpinner 
+            type="barbershop" 
+            message="Cargando servicios..." 
+            fullScreen={false}
+          />
+          
+          {/* Botón de escape después de 5 segundos */}
+          <div className="space-y-4">
+            <p className="text-zinc-500 text-sm">
+              Si esto tarda mucho, puede haber un problema de conexión
+            </p>
+            <Button 
+              onClick={() => {
+                console.log('🔄 Forzando salida del loading...');
+                setLoading(false);
+                showError('Loading cancelado manualmente. Revisa la consola para más detalles.');
+              }}
+              className="bg-zinc-700 hover:bg-zinc-600"
+            >
+              Salir del Loading
+            </Button>
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -332,7 +368,7 @@ const ManageServices = () => {
             placeholder="Buscar servicios..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            icon={<Search className="w-4 h-4" />}
+            icon={Search}
           />
           
           <select
@@ -510,7 +546,7 @@ const ManageServices = () => {
                 onChange={handleChange}
                 onBlur={handleBlur}
                 error={errors.name}
-                placeholder="Ej: Corte Clásico"
+                placeholder="Ingresa el nombre del servicio"
                 required
               />
 
@@ -605,10 +641,11 @@ const ManageServices = () => {
                 </Button>
                 <Button
                   type="submit"
+                  disabled={saving}
                   className="flex-1 bg-gradient-to-r from-amber-500 to-amber-600"
                 >
                   <Save className="w-4 h-4 mr-2" />
-                  {editingService ? 'Actualizar' : 'Crear'}
+                  {saving ? 'Guardando...' : (editingService ? 'Actualizar' : 'Crear')}
                 </Button>
               </div>
             </form>

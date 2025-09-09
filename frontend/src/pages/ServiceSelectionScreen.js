@@ -10,8 +10,14 @@ import {
   Star
 } from 'lucide-react';
 import { useNotification } from '../hooks/useNotification';
-import { getActiveServices } from '../services/firestoreService';
-import { COLLECTIONS } from '../constants';
+import { 
+  collection, 
+  query, 
+  where, 
+  orderBy, 
+  getDocs 
+} from 'firebase/firestore';
+import { db } from '../firebase/firebaseConfig';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -32,7 +38,20 @@ const ServiceSelectionScreen = ({
     const loadServices = async () => {
       setLoading(true);
       try {
-        const servicesData = await getActiveServices();
+        // Cargar servicios directamente desde Firebase sin autenticación
+        const servicesRef = collection(db, 'services');
+        const q = query(servicesRef, where('isActive', '==', true), orderBy('name'));
+        const querySnapshot = await getDocs(q);
+        
+        const servicesData = [];
+        querySnapshot.forEach((doc) => {
+          const serviceData = { id: doc.id, ...doc.data() };
+          // Solo agregar servicios con datos válidos
+          if (serviceData.id && serviceData.name && serviceData.price !== undefined) {
+            servicesData.push(serviceData);
+          }
+        });
+        
         setServices(servicesData);
         
         if (servicesData.length === 0) {
@@ -40,38 +59,8 @@ const ServiceSelectionScreen = ({
         }
       } catch (error) {
         console.error('Error loading services:', error);
-        showError('Error al cargar los servicios');
-        
-        // Servicios de fallback en caso de error
-        setServices([
-          {
-            id: 'corte-clasico',
-            name: 'Corte Clásico',
-            description: 'Corte tradicional con tijera y máquina',
-            price: 15000,
-            duration: 30,
-            category: 'corte',
-            isActive: true
-          },
-          {
-            id: 'corte-barba',
-            name: 'Corte + Barba',
-            description: 'Corte completo más arreglo de barba',
-            price: 25000,
-            duration: 45,
-            category: 'corte',
-            isActive: true
-          },
-          {
-            id: 'solo-barba',
-            name: 'Solo Barba',
-            description: 'Arreglo y perfilado de barba',
-            price: 12000,
-            duration: 20,
-            category: 'barba',
-            isActive: true
-          }
-        ]);
+        showError('Error al cargar los servicios. Por favor intenta más tarde.');
+        setServices([]);
       } finally {
         setLoading(false);
       }

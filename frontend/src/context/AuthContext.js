@@ -4,8 +4,9 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { onAuthStateChange, signInUser, signOutUser, registerUser } from '../services/authService';
-import { saveUserData, findUserInCollections } from '../services/firestoreService';
+import { saveUserData, findUserInCollections, getUserData } from '../services/firestoreService';
 import { COLLECTIONS, USER_ROLES } from '../constants';
+import { db } from '../firebase/firebaseConfig';
 
 // Crear el contexto
 const AuthContext = createContext(null);
@@ -33,37 +34,72 @@ export const AuthProvider = ({ children }) => {
 
   // Inicializar listener de autenticación
   useEffect(() => {
+    console.log('🔄 Iniciando AuthContext...');
+    
+    // Timeout de seguridad para evitar loading infinito
+    const loadingTimeout = setTimeout(() => {
+      console.log('⚠️ Timeout de autenticación - forzando fin de loading');
+      setLoading(false);
+    }, 10000); // 10 segundos
+    
     const unsubscribe = onAuthStateChange(async (user) => {
-      console.log('AuthContext: Estado de autenticación actualizado:', user?.email || 'Sin usuario');
-      
-      setCurrentUser(user);
-      
-      if (user) {
-        // Buscar datos del usuario en Firestore
-        try {
-          const userDataResult = await findUserInCollections(user.uid);
-          if (userDataResult.success) {
-            setUserData(userDataResult.data);
-            setUserRole(userDataResult.role);
-          } else {
-            console.warn('Usuario no encontrado en Firestore:', user.uid);
+      try {
+        console.log('🔄 AuthContext: Estado de autenticación actualizado:', user?.email || 'Sin usuario');
+        clearTimeout(loadingTimeout); // Cancelar timeout si la auth responde
+        
+        setCurrentUser(user);
+        
+        if (user) {
+          // Buscar datos del usuario en Firestore
+          try {
+            console.log('🔍 Buscando usuario en Firestore:', user.uid);
+            
+            // Primero buscar en admins por ID
+            const adminResult = await getUserData(user.uid, 'admins');
+            if (adminResult.success) {
+              console.log('✅ Admin encontrado:', adminResult.data);
+              setUserData(adminResult.data);
+              setUserRole('admin');
+              setLoading(false);
+              return;
+            }
+            
+            // Si no es admin, buscar en clients por ID
+            const clientResult = await getUserData(user.uid, 'clients');
+            if (clientResult.success) {
+              console.log('✅ Cliente encontrado:', clientResult.data);
+              setUserData(clientResult.data);
+              setUserRole('client');
+              setLoading(false);
+              return;
+            }
+            
+            // Si no se encuentra en ninguna colección
+            console.warn('❌ Usuario no encontrado en Firestore:', user.uid);
+            setUserData(null);
+            setUserRole(null);
+          } catch (error) {
+            console.error('❌ Error obteniendo datos del usuario:', error);
             setUserData(null);
             setUserRole(null);
           }
-        } catch (error) {
-          console.error('Error obteniendo datos del usuario:', error);
+        } else {
           setUserData(null);
           setUserRole(null);
         }
-      } else {
-        setUserData(null);
-        setUserRole(null);
+        
+        setLoading(false);
+      } catch (error) {
+        console.error('❌ Error en onAuthStateChange:', error);
+        clearTimeout(loadingTimeout);
+        setLoading(false);
       }
-      
-      setLoading(false);
     });
 
-    return unsubscribe;
+    return () => {
+      clearTimeout(loadingTimeout);
+      unsubscribe();
+    };
   }, []);
 
   /**
@@ -221,6 +257,10 @@ export const AuthProvider = ({ children }) => {
     userRole,
     loading,
     
+    // Firebase instances
+    db,
+    isAuthReady: !loading,
+    
     // Computed values
     isAuthenticated: !!currentUser,
     isClient: userRole === USER_ROLES.CLIENT,
@@ -233,6 +273,22 @@ export const AuthProvider = ({ children }) => {
     registerClient,
     registerAdmin
   };
+
+  // Debug: Exponer db y herramientas globalmente para debugging
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' || window.location.hostname.includes('web.app')) {
+      window.db = db;
+      
+      // Importar herramientas de conectividad
+      import('../utils/connectivityTest.js').then((module) => {
+        window.testConnectivity = module.default;
+        console.log('🛠️ Firebase Debug Tools disponibles en la consola');
+        console.log('🔧 Ejecuta: window.testConnectivity() para verificar conectividad completa');
+      }).catch((error) => {
+        console.log('⚠️ Herramientas de debug no disponibles:', error);
+      });
+    }
+  }, []);
 
   return (
     <AuthContext.Provider value={value}>

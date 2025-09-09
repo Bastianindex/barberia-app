@@ -3,6 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../hooks/useNotification';
 import { 
+  getAllAppointments, 
+  getAllClients, 
+  getActiveServices, 
+  getBusinessAnalytics 
+} from '../services/firestoreService';
+import { 
   Calendar, 
   Clock, 
   Users, 
@@ -21,9 +27,10 @@ import Card from '../components/ui/Card';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Notification from '../components/Notification';
 import { collection, query, onSnapshot, where, orderBy, limit } from 'firebase/firestore';
+import { db } from '../firebase/firebaseConfig';
 
 const Dashboard = () => {
-  const { db, currentUser, isAuthReady } = useAuth();
+  const { currentUser, loading: authLoading } = useAuth();
   const { notification, showSuccess, showError, showInfo, hideNotification } = useNotification();
   
   const [loading, setLoading] = useState(true);
@@ -40,13 +47,13 @@ const Dashboard = () => {
   const [todayAppointments, setTodayAppointments] = useState([]);
 
   useEffect(() => {
-    if (!db || !currentUser || !isAuthReady) {
+    if (authLoading || !currentUser) {
       setLoading(false);
       return;
     }
 
     loadDashboardData();
-  }, [db, currentUser, isAuthReady]);
+  }, [currentUser, authLoading]);
 
   const loadDashboardData = async () => {
     setLoading(true);
@@ -137,32 +144,17 @@ const Dashboard = () => {
       console.error('Error loading dashboard data:', error);
       showError('Error al cargar datos del dashboard');
       
-      // Datos de ejemplo en caso de error
+      // Inicializar con datos vacíos
       setMetrics({
-        totalAppointments: 45,
-        todayAppointments: 8,
-        totalClients: 23,
-        monthlyRevenue: 850000,
-        pendingAppointments: 12,
-        completedAppointments: 33
+        totalAppointments: 0,
+        todayAppointments: 0,
+        totalClients: 0,
+        monthlyRevenue: 0,
+        pendingAppointments: 0,
+        completedAppointments: 0
       });
       
-      setTodayAppointments([
-        {
-          id: 1,
-          clientName: 'Carlos Mendoza',
-          serviceName: 'Corte + Barba',
-          appointmentTime: '10:00 AM',
-          status: 'confirmed'
-        },
-        {
-          id: 2,
-          clientName: 'Luis Rodriguez',
-          serviceName: 'Corte Clásico',
-          appointmentTime: '11:30 AM',
-          status: 'confirmed'
-        }
-      ]);
+      setTodayAppointments([]);
     } finally {
       setLoading(false);
     }
@@ -197,7 +189,7 @@ const Dashboard = () => {
     );
   }
 
-  if (!isAuthReady || !currentUser) {
+  if (authLoading || !currentUser) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 flex items-center justify-center">
         <Card className="bg-zinc-800/80 border-zinc-700 text-center">

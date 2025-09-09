@@ -63,10 +63,11 @@ const Appointments = () => {
       );
 
       const unsubscribe = onSnapshot(appointmentsQuery, (snapshot) => {
-        const appointmentsData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
+        const appointmentsData = snapshot.docs.map(doc => {
+          const data = { id: doc.id, ...doc.data() };
+          // Solo incluir citas con datos mínimos válidos
+          return data.id && data.clientName && data.serviceName ? data : null;
+        }).filter(Boolean); // Filtrar elementos null
         
         setAppointments(appointmentsData);
         setLoading(false);
@@ -77,32 +78,7 @@ const Appointments = () => {
       console.error('Error loading appointments:', error);
       showError('Error al cargar las citas');
       setLoading(false);
-      
-      // Datos de ejemplo en caso de error
-      setAppointments([
-        {
-          id: '1',
-          clientName: 'Carlos Mendoza',
-          clientPhone: '+57 300 123 4567',
-          serviceName: 'Corte + Barba',
-          servicePrice: 25000,
-          appointmentDate: '2025-08-28',
-          appointmentTime: '10:00 AM',
-          status: 'confirmed',
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: '2',
-          clientName: 'Luis Rodriguez',
-          clientPhone: '+57 301 987 6543',
-          serviceName: 'Corte Clásico',
-          servicePrice: 15000,
-          appointmentDate: '2025-08-28',
-          appointmentTime: '2:30 PM',
-          status: 'pending',
-          createdAt: new Date().toISOString()
-        }
-      ]);
+      setAppointments([]);
     }
   }, [db, showError]);
 
@@ -113,9 +89,9 @@ const Appointments = () => {
     // Filtro por búsqueda
     if (searchTerm) {
       filtered = filtered.filter(apt => 
-        apt.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        apt.clientPhone.includes(searchTerm) ||
-        apt.serviceName.toLowerCase().includes(searchTerm.toLowerCase())
+        (apt.clientName && apt.clientName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (apt.clientPhone && apt.clientPhone.includes(searchTerm)) ||
+        (apt.serviceName && apt.serviceName.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 
@@ -186,6 +162,7 @@ const Appointments = () => {
 
   // Formatear precio
   const formatPrice = (price) => {
+    if (!price || isNaN(price)) return 'Precio no disponible';
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
       currency: 'COP',
@@ -195,12 +172,18 @@ const Appointments = () => {
 
   // Formatear fecha
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-CO', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric'
-    });
+    if (!dateString) return 'Fecha no disponible';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Fecha inválida';
+      return date.toLocaleDateString('es-CO', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch (error) {
+      return 'Fecha inválida';
+    }
   };
 
   // Obtener color del estado
@@ -264,7 +247,7 @@ const Appointments = () => {
             placeholder="Buscar por nombre, teléfono o servicio..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            icon={<Search className="w-4 h-4" />}
+            icon={Search}
           />
           
           <select
@@ -323,11 +306,11 @@ const Appointments = () => {
                       </div>
                       <div>
                         <h3 className="font-semibold text-white">
-                          {appointment.clientName}
+                          {appointment.clientName || 'Cliente sin nombre'}
                         </h3>
                         <p className="text-sm text-zinc-400 flex items-center gap-1">
                           <Phone className="w-3 h-3" />
-                          {appointment.clientPhone}
+                          {appointment.clientPhone || 'Sin teléfono'}
                         </p>
                       </div>
                     </div>
@@ -335,18 +318,18 @@ const Appointments = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                       <div className="flex items-center gap-2 text-zinc-300">
                         <Calendar className="w-4 h-4 text-amber-400" />
-                        <span>{formatDate(appointment.appointmentDate)}</span>
+                        <span>{appointment.appointmentDate ? formatDate(appointment.appointmentDate) : 'Fecha no disponible'}</span>
                       </div>
                       
                       <div className="flex items-center gap-2 text-zinc-300">
                         <Clock className="w-4 h-4 text-amber-400" />
-                        <span>{appointment.appointmentTime}</span>
+                        <span>{appointment.appointmentTime || 'Hora no disponible'}</span>
                       </div>
                       
                       <div className="flex items-center gap-2 text-zinc-300">
-                        <span>{appointment.serviceName}</span>
+                        <span>{appointment.serviceName || 'Servicio no especificado'}</span>
                         <span className="text-green-400 font-semibold">
-                          {formatPrice(appointment.servicePrice)}
+                          {appointment.servicePrice ? formatPrice(appointment.servicePrice) : 'Precio no disponible'}
                         </span>
                       </div>
                     </div>

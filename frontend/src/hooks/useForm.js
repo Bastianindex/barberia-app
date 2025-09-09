@@ -11,7 +11,8 @@ import { useState, useCallback } from 'react';
  * @returns {Object} Estado y funciones del formulario
  */
 export const useForm = (initialValues = {}, validationFn = null) => {
-  const [values, setValues] = useState(initialValues);
+  const safeInitialValues = initialValues || {};
+  const [values, setValues] = useState(safeInitialValues);
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -19,7 +20,7 @@ export const useForm = (initialValues = {}, validationFn = null) => {
   // Actualizar un campo específico
   const setValue = useCallback((name, value) => {
     setValues(prev => ({
-      ...prev,
+      ...(prev || {}),
       [name]: value
     }));
   }, []);
@@ -32,9 +33,9 @@ export const useForm = (initialValues = {}, validationFn = null) => {
     setValue(name, fieldValue);
     
     // Limpiar error cuando el usuario empieza a escribir
-    if (errors[name]) {
+    if (errors && errors[name]) {
       setErrors(prev => ({
-        ...prev,
+        ...(prev || {}),
         [name]: ''
       }));
     }
@@ -49,9 +50,9 @@ export const useForm = (initialValues = {}, validationFn = null) => {
     }));
 
     // Validar solo este campo si hay función de validación
-    if (validationFn) {
+    if (validationFn && values && typeof values === 'object') {
       const validation = validationFn({ [name]: values[name] });
-      if (!validation.isValid && validation.errors[name]) {
+      if (!validation.isValid && validation.errors && validation.errors[name]) {
         setErrors(prev => ({
           ...prev,
           [name]: validation.errors[name]
@@ -62,16 +63,20 @@ export const useForm = (initialValues = {}, validationFn = null) => {
 
   // Validar todo el formulario
   const validate = useCallback(() => {
-    if (!validationFn) return { isValid: true, errors: {} };
+    if (!validationFn || !values || typeof values !== 'object') {
+      return { isValid: true, errors: {} };
+    }
     
     const validation = validationFn(values);
-    setErrors(validation.errors);
+    const safeErrors = validation.errors || {};
+    setErrors(safeErrors);
     return validation;
   }, [values, validationFn]);
 
   // Resetear formulario
   const reset = useCallback(() => {
-    setValues(initialValues);
+    const safeInitialValues = initialValues || {};
+    setValues(safeInitialValues);
     setErrors({});
     setTouched({});
     setIsSubmitting(false);
@@ -80,13 +85,13 @@ export const useForm = (initialValues = {}, validationFn = null) => {
   // Establecer errores manualmente
   const setError = useCallback((name, error) => {
     setErrors(prev => ({
-      ...prev,
+      ...(prev || {}),
       [name]: error
     }));
   }, []);
 
   // Verificar si el formulario es válido
-  const isValid = Object.keys(errors).length === 0;
+  const isValid = errors && typeof errors === 'object' ? Object.keys(errors).length === 0 : true;
 
   return {
     values,

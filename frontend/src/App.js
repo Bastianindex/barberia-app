@@ -49,8 +49,27 @@ const AppContent = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-zinc-900 text-white">
-        <p className="text-xl">Cargando aplicación...</p>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-900 text-white space-y-6">
+        <div className="text-center">
+          <p className="text-xl mb-4">Cargando aplicación...</p>
+          <div className="w-8 h-8 border-4 border-amber-500/30 border-t-amber-500 rounded-full animate-spin mx-auto mb-6"></div>
+        </div>
+        
+        {/* Botón de escape después de unos segundos */}
+        <div className="text-center space-y-4">
+          <p className="text-zinc-500 text-sm">
+            Si esto tarda mucho, puede haber un problema de conexión
+          </p>
+          <button 
+            onClick={() => {
+              console.log('🔄 Forzando salida del loading...');
+              window.location.reload();
+            }}
+            className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 rounded-lg text-sm transition-colors"
+          >
+            Recargar Página
+          </button>
+        </div>
       </div>
     );
   }
@@ -64,6 +83,8 @@ const AppContent = () => {
         <ClientRegistrationScreen
           onGoBack={() => setCurrentPage('clientRegistration')} // Mantener en la misma pantalla
           onClientRegistered={(data) => {
+            console.log('=== APP.JS - CLIENTE REGISTRADO ===');
+            console.log('Datos recibidos en App.js:', data);
             setClientData(data);
             setCurrentPage('serviceSelection');
           }}
@@ -87,7 +108,7 @@ const AppContent = () => {
       content = (
         <AppointmentBookingScreen
           clientData={clientData}
-          selectedServiceId={selectedService?.id}
+          selectedService={selectedService}
           onGoBack={() => setCurrentPage('serviceSelection')}
           onBookAppointment={(appointmentData) => {
             setNotification({ 
