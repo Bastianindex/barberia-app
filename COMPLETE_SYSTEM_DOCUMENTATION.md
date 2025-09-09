@@ -645,13 +645,17 @@ service cloud.firestore {
 #### **Firebase Configuration**
 ```javascript
 const firebaseConfig = {
-  apiKey: "AIzaSyD5LP9d8Rb17Bg7wBzxGM5QFk_9TU0rkts",
-  authDomain: "olimu-barbershop.firebaseapp.com",
-  projectId: "olimu-barbershop",
-  storageBucket: "olimu-barbershop.firebasestorage.app",
-  messagingSenderId: "183089490976",
-  appId: "1:183089490976:web:5b52af2b9ba5ef15a2fb55"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID
 };
+
+// Las variables de entorno deben estar configuradas en:
+// - .env.local para desarrollo
+// - Variables de entorno del hosting para producción
 ```
 
 ---
