@@ -214,9 +214,9 @@ export const getActiveServices = async () => {
 export const createAppointment = async (appointmentData) => {
   try {
     const docRef = await addDoc(collection(db, COLLECTIONS.APPOINTMENTS), {
+      status: 'pending', // default
       ...appointmentData,
-      createdAt: new Date(),
-      status: 'pending'
+      createdAt: new Date()
     });
     
     return { 
@@ -241,14 +241,20 @@ export const getAppointmentsByClient = async (clientId) => {
     const appointmentsRef = collection(db, COLLECTIONS.APPOINTMENTS);
     const q = query(
       appointmentsRef, 
-      where('clientId', '==', clientId), 
-      orderBy('date', 'desc')
+      where('clientId', '==', clientId)
     );
     const querySnapshot = await getDocs(q);
     
     const appointments = [];
     querySnapshot.forEach((doc) => {
       appointments.push({ id: doc.id, ...doc.data() });
+    });
+
+    // Ordenar por fecha y hora en el cliente (más seguro sin índices compuestos)
+    appointments.sort((a, b) => {
+      const dateA = new Date(`${a.appointmentDate} ${a.appointmentTime}`);
+      const dateB = new Date(`${b.appointmentDate} ${b.appointmentTime}`);
+      return dateB - dateA;
     });
 
     return { 

@@ -25,7 +25,6 @@ import {
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import LoadingSpinner from '../components/LoadingSpinner';
-import Notification from '../components/Notification';
 import { collection, query, onSnapshot, where, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 
@@ -374,14 +373,6 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Notifications */}
-        {notification && (
-          <Notification
-            message={notification.message}
-            type={notification.type}
-            onClose={hideNotification}
-          />
-        )}
       </div>
     </div>
   );

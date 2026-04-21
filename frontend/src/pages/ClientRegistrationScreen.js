@@ -12,19 +12,22 @@ import {
   LogIn,
   Lock
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useForm } from '../hooks/useForm';
 import { useNotification } from '../hooks/useNotification';
 import { useAuth } from '../context/AuthContext';
+import { useBooking } from '../context/BookingContext';
 import { validateClientRegistration, validateLogin } from '../utils/validation';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
 import LoadingSpinner from '../components/LoadingSpinner';
-import Notification from '../components/Notification';
 
-const ClientRegistrationScreen = ({ onGoBack, onClientRegistered, onAdminAccess }) => {
-  const { notification, showSuccess, showError, showInfo, hideNotification } = useNotification();
-  const { login, registerClient, userData, isAuthenticated, isClient } = useAuth();
+const ClientRegistrationScreen = () => {
+  const navigate = useNavigate();
+  const { notification, showSuccess, showError, hideNotification } = useNotification();
+  const { login, registerClient, userData, isAuthenticated, isClient, isAdmin } = useAuth();
+  const { setClientData } = useBooking();
   const [loading, setLoading] = useState(false);
   const [isLoginMode, setIsLoginMode] = useState(true); // Por defecto, login profesional
 
@@ -56,13 +59,18 @@ const ClientRegistrationScreen = ({ onGoBack, onClientRegistered, onAdminAccess 
     password: ''
   }, validateLogin);
 
-  // Auto-login si ya existe sesión de cliente
+  // Auto-login si ya existe sesión
   useEffect(() => {
-    if (isAuthenticated && isClient && userData) {
-      showSuccess(`¡Bienvenido de vuelta, ${userData.name}!`);
-      onClientRegistered?.(userData);
+    if (isAuthenticated && userData) {
+      if (isAdmin) {
+        navigate('/admin');
+      } else if (isClient) {
+        showSuccess(`¡Bienvenido de vuelta, ${userData.name}!`);
+        setClientData(userData);
+        navigate('/select-service');
+      }
     }
-  }, [isAuthenticated, isClient, userData, onClientRegistered, showSuccess]);
+  }, [isAuthenticated, isClient, isAdmin, userData, navigate, setClientData, showSuccess]);
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
@@ -322,14 +330,6 @@ const ClientRegistrationScreen = ({ onGoBack, onClientRegistered, onAdminAccess 
           </div>
         </Card>
 
-        {/* Notificaciones */}
-        {notification && (
-          <Notification
-            message={notification.message}
-            type={notification.type}
-            onClose={hideNotification}
-          />
-        )}
       </div>
     </div>
   );

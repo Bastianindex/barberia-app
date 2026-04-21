@@ -9,9 +9,12 @@ import {
   Scissors,
   ArrowRight,
   Check,
-  AlertCircle
+  AlertCircle,
+  CheckCircle2
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../hooks/useNotification';
+import { useBooking } from '../context/BookingContext';
 import { createAppointment, getUserData } from '../services/firestoreService';
 import { getDocs, collection, query, where, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
@@ -20,14 +23,10 @@ import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ConfirmationModal from '../components/ConfirmationModal';
-import Notification from '../components/Notification';
 
-const AppointmentBookingScreen = ({ 
-  clientData, 
-  selectedService, 
-  onGoBack, 
-  onBookAppointment 
-}) => {
+const AppointmentBookingScreen = () => {
+  const navigate = useNavigate();
+  const { clientData, selectedService, resetBooking } = useBooking();
   const { notification, showSuccess, showError, showInfo, hideNotification } = useNotification();
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
@@ -37,6 +36,7 @@ const AppointmentBookingScreen = ({
   const [serviceDetails, setServiceDetails] = useState(selectedService);
   const [loading, setLoading] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [businessSettings, setBusinessSettings] = useState({
     workingHours: { start: 9, end: 19 },
     bookingConfig: { slotInterval: 30, maxDaysAhead: 14 }
@@ -294,6 +294,7 @@ const AppointmentBookingScreen = ({
       console.log('Cita creada exitosamente:', appointmentRef);
       
       showSuccess('¡Cita agendada exitosamente!');
+      setIsSuccess(true);
       
       // Actualizar localStorage con la nueva cita
       const clientDataWithAppointment = {
@@ -304,11 +305,9 @@ const AppointmentBookingScreen = ({
       localStorage.setItem('olimubarbershop_client', JSON.stringify(clientDataWithAppointment));
 
       setTimeout(() => {
-        onBookAppointment?.({
-          ...appointmentData,
-          id: appointmentRef.id
-        });
-      }, 2000);
+        resetBooking();
+        navigate('/select-service');
+      }, 3000);
 
     } catch (error) {
       console.error('Error creating appointment:', error);
@@ -327,6 +326,39 @@ const AppointmentBookingScreen = ({
     }).format(price);
   };
 
+  if (isSuccess) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-6">
+        <Card className="max-w-md w-full glass-card p-10 text-center animate-fadeIn">
+          <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle2 className="w-12 h-12 text-green-500 animate-bounce" />
+          </div>
+          <h2 className="text-3xl font-bold text-white mb-4">¡Reserva Exitosa!</h2>
+          <p className="text-zinc-400 mb-8 leading-relaxed">
+            Tu hora ha sido agendada con éxito. Te esperamos en <span className="text-brand-amber-500 font-bold">Olimu Barbershop</span>.
+          </p>
+          <div className="bg-zinc-900/50 rounded-2xl p-6 mb-8 border border-zinc-800">
+            <p className="text-sm text-zinc-500 uppercase tracking-widest font-bold mb-2">Servicio</p>
+            <p className="text-xl font-bold text-white">{selectedService?.name}</p>
+            <div className="flex items-center justify-center gap-4 mt-4 text-zinc-400">
+              <span className="flex items-center gap-1">
+                <Calendar className="w-4 h-4 text-brand-amber-500" />
+                {selectedDate?.displayName}
+              </span>
+              <span className="flex items-center gap-1">
+                <Clock className="w-4 h-4 text-brand-amber-500" />
+                {selectedTime?.timeString}
+              </span>
+            </div>
+          </div>
+          <p className="text-brand-amber-500 font-medium italic">
+            "Muchas gracias por preferirnos"
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <LoadingSpinner 
@@ -344,7 +376,7 @@ const AppointmentBookingScreen = ({
         <div className="flex items-center justify-between mb-8">
           <Button
             variant="ghost"
-            onClick={onGoBack}
+            onClick={() => navigate('/select-service')}
             className="flex items-center gap-2 text-zinc-400 hover:text-white"
           >
             <ChevronLeft className="w-5 h-5" />
@@ -546,14 +578,6 @@ const AppointmentBookingScreen = ({
           />
         )}
 
-        {/* Notifications */}
-        {notification && (
-          <Notification
-            message={notification.message}
-            type={notification.type}
-            onClose={hideNotification}
-          />
-        )}
       </div>
     </div>
   );

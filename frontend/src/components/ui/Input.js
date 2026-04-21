@@ -38,16 +38,13 @@ const Input = memo(forwardRef(({
   ].filter(Boolean).join(' ');
   
   // Clases del input
-  const baseInputClasses = 'block w-full rounded-lg border bg-zinc-900 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
-  
   const inputClasses = [
-    baseInputClasses,
+    'input-field',
     error 
-      ? 'border-red-500 focus:ring-red-500' 
-      : 'border-zinc-700 focus:ring-amber-500',
-    Icon ? 'pl-10' : 'pl-4',
-    showPasswordToggle ? 'pr-10' : 'pr-4',
-    'py-3',
+      ? 'border-red-500 focus:ring-red-500/20' 
+      : '',
+    Icon ? 'pl-11' : 'pl-4',
+    showPasswordToggle ? 'pr-11' : 'pr-4',
     inputClassName
   ].filter(Boolean).join(' ');
   
