@@ -1,6 +1,6 @@
 // frontend/src/pages/ClientRegistrationScreen.js
 import React, { useState, useEffect } from 'react';
-import { 
+import {
   Scissors,
   User,
   Phone,
@@ -18,6 +18,7 @@ import { useNotification } from '../hooks/useNotification';
 import { useAuth } from '../context/AuthContext';
 import { useBooking } from '../context/BookingContext';
 import { validateClientRegistration, validateLogin } from '../utils/validation';
+import { sanitizeData } from '../utils/sanitization';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
@@ -74,7 +75,7 @@ const ClientRegistrationScreen = () => {
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateLoginForm()) {
       showError('Por favor verifica los campos obligatorios.');
       return;
@@ -83,7 +84,7 @@ const ClientRegistrationScreen = () => {
     setLoading(true);
     try {
       const result = await login(loginValues.email, loginValues.password);
-      
+
       if (!result.success) {
         showError(result.error || 'Credenciales incorrectas');
         setLoading(false);
@@ -101,20 +102,24 @@ const ClientRegistrationScreen = () => {
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateReg()) {
       showError('Por favor verifica los campos obligatorios para el registro.');
       return;
     }
 
+
     setLoading(true);
     try {
-      const result = await registerClient({
+      const sanitizedData = sanitizeData({
         name: regValues.name,
         phone: regValues.phone,
         email: regValues.email,
         password: regValues.password
       });
+
+      const result = await registerClient(sanitizedData);
+
 
       if (!result.success) {
         showError(result.error || 'Error al crear la cuenta');
@@ -139,9 +144,9 @@ const ClientRegistrationScreen = () => {
   // Si estamos cargando o ya estamos autenticados (esperando redirección), mostrar spinner
   if (loading || isAuthenticated) {
     return (
-      <LoadingSpinner 
-        type="barbershop" 
-        message={isAuthenticated ? "Entrando..." : "Cargando..."} 
+      <LoadingSpinner
+        type="barbershop"
+        message={isAuthenticated ? "Entrando..." : "Cargando..."}
         fullScreen={true}
       />
     );
@@ -162,7 +167,7 @@ const ClientRegistrationScreen = () => {
               <span>Regresar</span>
             </Button>
           )}
-          
+
           <div className="flex-1"></div>
         </div>
 
@@ -183,7 +188,7 @@ const ClientRegistrationScreen = () => {
             {isLoginMode ? 'Inicia Sesión' : 'Crea tu Cuenta'}
           </h2>
           <p className="text-zinc-400 text-sm">
-            {isLoginMode 
+            {isLoginMode
               ? 'Accede para gestionar tus citas'
               : 'Regístrate para reservar tu turno fácil y rápido'
             }

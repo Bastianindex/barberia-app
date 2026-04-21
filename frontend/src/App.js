@@ -26,6 +26,18 @@ import { useNotification } from './hooks/useNotification';
 
 const PrivateRoute = ({ children }) => {
   const { currentUser, loading } = useAuth();
+
+  if (loading) return (
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <div className="w-12 h-12 border-4 border-brand-amber-500/20 border-t-brand-amber-500 rounded-full animate-spin"></div>
+    </div>
+  );
+
+  return currentUser ? children : <Navigate to="/" />;
+};
+
+const AdminRoute = ({ children }) => {
+  const { currentUser, isAdmin, loading } = useAuth();
   
   if (loading) return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
@@ -33,8 +45,9 @@ const PrivateRoute = ({ children }) => {
     </div>
   );
   
-  return currentUser ? children : <Navigate to="/" />;
+  return currentUser && isAdmin ? children : <Navigate to="/" />;
 };
+
 
 const AppRoutes = () => {
   const { notification, hideNotification } = useNotification();
@@ -44,7 +57,7 @@ const AppRoutes = () => {
       <Routes>
         {/* Public Client Flow */}
         <Route path="/" element={<ClientRegistrationScreen />} />
-        
+
         {/* Protected Client Flow */}
         <Route path="/select-service" element={
           <PrivateRoute>
@@ -64,10 +77,11 @@ const AppRoutes = () => {
 
         {/* Admin Area */}
         <Route path="/admin" element={
-          <PrivateRoute>
+          <AdminRoute>
             <AdminLayout />
-          </PrivateRoute>
+          </AdminRoute>
         }>
+
           <Route index element={<Dashboard />} />
           <Route path="appointments" element={<Appointments />} />
           <Route path="clients" element={<ClientsAnalytics />} />
@@ -81,10 +95,10 @@ const AppRoutes = () => {
 
       {/* Global Notification */}
       {notification && (
-        <Notification 
-          message={notification.message} 
-          type={notification.type} 
-          onClose={hideNotification} 
+        <Notification
+          message={notification.message}
+          type={notification.type}
+          onClose={hideNotification}
         />
       )}
     </div>
