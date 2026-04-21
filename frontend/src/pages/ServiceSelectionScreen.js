@@ -10,6 +10,7 @@ import {
   Star
 } from 'lucide-react';
 import { useNotification } from '../hooks/useNotification';
+import { useAuth } from '../context/AuthContext';
 import { 
   collection, 
   query, 
@@ -29,6 +30,7 @@ const ServiceSelectionScreen = ({
   onServiceSelected 
 }) => {
   const { notification, showSuccess, showError, showInfo, hideNotification } = useNotification();
+  const { logout } = useAuth();
   const [services, setServices] = useState([]);
   const [selectedService, setSelectedService] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -68,6 +70,12 @@ const ServiceSelectionScreen = ({
 
     loadServices();
   }, [showError, showInfo]);
+
+  // Manejar cierre de sesión y regresar al login
+  const handleGoBack = async () => {
+    await logout();
+    onGoBack?.();
+  };
 
   // Manejar selección de servicio
   const handleServiceSelect = (service) => {
@@ -127,11 +135,11 @@ const ServiceSelectionScreen = ({
         <div className="flex items-center justify-between mb-8">
           <Button
             variant="ghost"
-            onClick={onGoBack}
+            onClick={handleGoBack}
             className="flex items-center gap-2 text-zinc-400 hover:text-white"
           >
             <ChevronLeft className="w-5 h-5" />
-            <span>Regresar</span>
+            <span>Cerrar sesión</span>
           </Button>
         </div>
 

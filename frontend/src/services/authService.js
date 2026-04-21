@@ -7,7 +7,8 @@ import {
   signOut, 
   onAuthStateChanged,
   createUserWithEmailAndPassword,
-  updateProfile
+  updateProfile,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { auth } from '../firebase/firebaseConfig';
 import { FIREBASE_ERROR_CODES } from '../constants';
@@ -97,4 +98,22 @@ export const registerUser = async (email, password, displayName) => {
  */
 export const onAuthStateChange = (callback) => {
   return onAuthStateChanged(auth, callback);
+};
+
+/**
+ * Enviar correo de recuperación de contraseña
+ * @param {string} email - Email del usuario
+ * @returns {Promise<AuthResult>}
+ */
+export const resetPassword = async (email) => {
+  try {
+    await sendPasswordResetEmail(auth, email);
+    return { success: true };
+  } catch (error) {
+    console.error('Error en resetPassword:', error);
+    return { 
+      success: false, 
+      error: handleAuthError(error) 
+    };
+  }
 };

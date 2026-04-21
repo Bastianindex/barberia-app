@@ -88,7 +88,7 @@ export const getUserData = async (userId, collectionName = COLLECTIONS.CLIENTS) 
     if (userDoc.exists()) {
       return { 
         success: true, 
-        data: userDoc.data() 
+        data: { id: userDoc.id, ...userDoc.data() } 
       };
     } else {
       return { 
@@ -415,5 +415,111 @@ export const getAllClients = async () => {
       success: false, 
       error: handleFirestoreError(error) 
     };
+  }
+};
+
+/**
+ * Unifica el esquema de los clientes eliminando campos analíticos obsoletos
+ * @returns {Promise<{success: boolean, message?: string, error?: string}>}
+ */
+export const unifyClientSchema = async () => {
+  try {
+    console.log('=== INICIANDO UNIFICACIÓN DE ESQUEMA DE CLIENTES ===');
+    const clientsRef = collection(db, COLLECTIONS.CLIENTS);
+    const querySnapshot = await getDocs(clientsRef);
+    
+    let updatedCount = 0;
+    
+    // Campos que NO deben estar en la base de datos (se calculan dinámicamente)
+    const fieldsToRemove = [
+      'appointmentCount',
+      'avgSpent',
+      'daysSinceLastVisit',
+      'favoriteService',
+      'isVip',
+      'lastVisit',
+      'totalAppointments',
+      'totalSpent',
+      'registrationDate',
+      'completedAppointments',
+      'cancelledAppointments',
+      'firstVisit',
+      'loyaltyLevel',
+      'password' // Por seguridad, nunca debe estar en texto plano en Firestore
+    ];
+
+    for (const document of querySnapshot.docs) {
+      const data = document.data();
+      let needsUpdate = false;
+      const updates = {};
+      
+      // Identificar si tiene campos basura
+      fieldsToRemove.forEach(field => {
+        if (data[field] !== undefined) {
+          needsUpdate = true;
+          // Para eliminar un campo en Firestore usando updateDoc, se debe usar deleteField()
+          // pero como no lo hemos importado, podemos simplemente reconstruir el documento
+        }
+      });
+
+      if (needsUpdate) {
+        // Crear un nuevo objeto solo con los campos permitidos
+        const cleanData = {
+          name: data.name || '',
+          email: data.email || null,
+          phone: data.phone || null,
+          role: data.role || 'client',
+          emailVerified: data.emailVerified || false,
+          isActive: data.isActive !== undefined ? data.isActive : true,
+          createdAt: data.createdAt || new Date(),
+          updatedAt: new Date()
+        };
+
+        // Sobrescribir el documento limpiando campos basura
+        await setDoc(doc(db, COLLECTIONS.CLIENTS, document.id), cleanData);
+        updatedCount++;
+        console.log(`Cliente unificado: ${cleanData.name} (${document.id})`);
+      }
+    }
+
+    console.log(`=== UNIFICACIÓN COMPLETADA: ${updatedCount} clientes actualizados ===`);
+    return { 
+      success: true, 
+      message: `Se unificaron ${updatedCount} clientes exitosamente.` 
+    };
+  } catch (error) {
+    console.error('Error unificando clientes:', error);
+    return { 
+      success: false, 
+      error: handleFirestoreError(error) 
+    };
+  }
+};
+
+/**
+ * Crea y repara el documento del administrador principal con el UID correcto
+ */
+export const fixAdminAccount = async () => {
+  try {
+    console.log('=== CREANDO ADMIN REAL ===');
+    const adminUID = 'hObxVzhGPteZ5G7scRZesqZCinY2'; // El UID provisto por el usuario
+    
+    const adminData = {
+      email: 'admin@barberia.local',
+      name: 'Administrador Principal',
+      role: 'admin',
+      isActive: true,
+      isMainAdmin: true,
+      emailVerified: true,
+      createdAt: new Date().toISOString(),
+      permissions: ['dashboard', 'appointments', 'clients', 'services', 'analytics']
+    };
+
+    await setDoc(doc(db, COLLECTIONS.ADMINS, adminUID), adminData);
+    console.log('✅ Documento de administrador creado exitosamente con el UID:', adminUID);
+    return { success: true, message: 'Admin creado exitosamente' };
+  } catch (error) {
+    console.error('❌ Error creando admin:', error);
+    return { success: false, error: handleFirestoreError(error) };
   }
 };

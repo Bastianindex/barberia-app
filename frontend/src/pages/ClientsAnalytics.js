@@ -132,7 +132,7 @@ const ClientsAnalytics = () => {
         }
         
         filteredAppointments = clientAppointments.filter(apt => {
-          const aptDate = apt.date?.toDate ? apt.date.toDate() : new Date(apt.date);
+          const aptDate = apt.appointmentDateTime?.toDate ? apt.appointmentDateTime.toDate() : new Date(apt.appointmentDateTime);
           return aptDate >= periodStart;
         });
       }
@@ -142,13 +142,13 @@ const ClientsAnalytics = () => {
       );
       
       const totalSpent = completedAppointments.reduce((sum, apt) => 
-        sum + (apt.totalPrice || 0), 0
+        sum + (apt.servicePrice || apt.totalAmount || 0), 0
       );
       
       const lastAppointment = clientAppointments
         .sort((a, b) => {
-          const dateA = a.date?.toDate ? a.date.toDate() : new Date(a.date);
-          const dateB = b.date?.toDate ? b.date.toDate() : new Date(b.date);
+          const dateA = a.appointmentDateTime?.toDate ? a.appointmentDateTime.toDate() : new Date(a.appointmentDateTime);
+          const dateB = b.appointmentDateTime?.toDate ? b.appointmentDateTime.toDate() : new Date(b.appointmentDateTime);
           return dateB - dateA;
         })[0];
 
@@ -177,10 +177,10 @@ const ClientsAnalytics = () => {
         appointmentCount: completedAppointments.length,
         totalSpent,
         avgSpent,
-        lastVisit: lastAppointment?.date,
+        lastVisit: lastAppointment?.appointmentDateTime,
         favoriteService: favoriteService?.name || 'Ninguno',
         daysSinceLastVisit: lastAppointment 
-          ? Math.floor((new Date() - (lastAppointment.date?.toDate ? lastAppointment.date.toDate() : new Date(lastAppointment.date))) / (1000 * 60 * 60 * 24))
+          ? Math.floor((new Date() - (lastAppointment.appointmentDateTime?.toDate ? lastAppointment.appointmentDateTime.toDate() : new Date(lastAppointment.appointmentDateTime))) / (1000 * 60 * 60 * 24))
           : null
       };
     });
@@ -229,7 +229,7 @@ const ClientsAnalytics = () => {
     const totalAppointments = appointments.filter(apt => apt.status === 'completed').length;
     const totalRevenue = appointments
       .filter(apt => apt.status === 'completed')
-      .reduce((sum, apt) => sum + (apt.totalPrice || 0), 0);
+      .reduce((sum, apt) => sum + (apt.servicePrice || apt.totalAmount || 0), 0);
     
     const avgRevenuePerClient = totalClients > 0 ? totalRevenue / totalClients : 0;
     const avgAppointmentsPerClient = totalClients > 0 ? totalAppointments / totalClients : 0;

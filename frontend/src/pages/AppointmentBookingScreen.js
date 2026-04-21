@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { useNotification } from '../hooks/useNotification';
 import { createAppointment, getUserData } from '../services/firestoreService';
-import { getDocs, collection, query, where } from 'firebase/firestore';
+import { getDocs, collection, query, where, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import { COLLECTIONS } from '../constants';
 import Button from '../components/ui/Button';
@@ -37,6 +37,26 @@ const AppointmentBookingScreen = ({
   const [serviceDetails, setServiceDetails] = useState(selectedService);
   const [loading, setLoading] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [businessSettings, setBusinessSettings] = useState({
+    workingHours: { start: 9, end: 19 },
+    bookingConfig: { slotInterval: 30, maxDaysAhead: 14 }
+  });
+
+  // Cargar configuración del negocio
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const settingsRef = doc(db, 'settings', 'business');
+        const settingsSnap = await getDoc(settingsRef);
+        if (settingsSnap.exists()) {
+          setBusinessSettings(settingsSnap.data());
+        }
+      } catch (error) {
+        console.warn('⚠️ No se pudo cargar configuración, usando valores por defecto');
+      }
+    };
+    fetchSettings();
+  }, []);
 
   // Generar fechas disponibles (próximos 14 días, excluyendo domingos)
   useEffect(() => {
@@ -45,8 +65,9 @@ const AppointmentBookingScreen = ({
       const today = new Date();
       let daysAdded = 0;
       let currentDate = new Date(today);
+      const maxDays = businessSettings.bookingConfig.maxDaysAhead || 14;
 
-      while (daysAdded < 14) {
+      while (daysAdded < maxDays) {
         // Excluir domingos (0 = domingo)
         if (currentDate.getDay() !== 0) {
           dates.push({
@@ -141,19 +162,32 @@ const AppointmentBookingScreen = ({
     // Obtener citas existentes para esta fecha
     const existingAppts = await getExistingAppointments(date.dateString);
     
+    // Obtener bloqueos para esta fecha
+    let blockedSlots = [];
+    try {
+      const blockedRef = collection(db, 'blocked_slots');
+      const blockedQuery = query(blockedRef, where('date', '==', date.dateString));
+      const blockedSnapshot = await getDocs(blockedQuery);
+      blockedSlots = blockedSnapshot.docs.map(doc => doc.data().time);
+      console.log('🚫 Horarios bloqueados encontrados:', blockedSlots);
+    } catch (error) {
+      console.warn('⚠️ No se pudieron cargar horarios bloqueados:', error);
+    }
+    
     const times = [];
-    const selectedDateObj = new Date(date.dateString);
+    
+    // IMPORTANTE: Crear el objeto de fecha usando componentes individuales para evitar desfases de zona horaria
+    const [year, month, day] = date.dateString.split('-').map(Number);
+    const selectedDateObj = new Date(year, month - 1, day);
+    
     const now = new Date();
     const serviceDuration = serviceDetails?.duration || 30;
     
-    // Horarios de trabajo: 9:00 AM - 7:00 PM
-    const workingHours = {
-      start: 9,
-      end: 19
-    };
+    const { start, end } = businessSettings.workingHours;
+    const interval = businessSettings.bookingConfig.slotInterval || 30;
 
-    for (let hour = workingHours.start; hour < workingHours.end; hour++) {
-      for (let minute of [0, 30]) {
+    for (let hour = start; hour < end; hour++) {
+      for (let minute = 0; minute < 60; minute += interval) {
         const timeSlot = new Date(selectedDateObj);
         timeSlot.setHours(hour, minute, 0, 0);
         
@@ -162,10 +196,14 @@ const AppointmentBookingScreen = ({
           continue;
         }
 
-        // Verificar si el horario está ocupado
+        // Verificar si el horario está ocupado por una cita
         const isOccupied = isTimeSlotOccupied(timeSlot, serviceDuration, existingAppts);
         
-        // Agregar duración del servicio para mostrar cuando termina
+        // Verificar si el horario está bloqueado manualmente por el administrador
+        const timeString24h = timeSlot.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false });
+        const isBlocked = blockedSlots.includes(timeString24h);
+        
+        const finalAvailability = !isOccupied && !isBlocked;
         const endTime = new Date(timeSlot);
         endTime.setMinutes(endTime.getMinutes() + serviceDuration);
 
@@ -177,8 +215,9 @@ const AppointmentBookingScreen = ({
             hour12: true 
           }),
           endTime: endTime,
-          available: !isOccupied,
-          occupied: isOccupied
+          available: finalAvailability,
+          occupied: isOccupied,
+          blocked: isBlocked
         });
       }
     }
@@ -402,6 +441,11 @@ const AppointmentBookingScreen = ({
                   {time.occupied && (
                     <div className="text-xs text-red-400 mt-1">
                       Ocupado
+                    </div>
+                  )}
+                  {time.blocked && (
+                    <div className="text-xs text-amber-400 mt-1">
+                      Bloqueado
                     </div>
                   )}
                 </button>

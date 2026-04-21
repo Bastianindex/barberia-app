@@ -3,7 +3,7 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { onAuthStateChange, signInUser, signOutUser, registerUser } from '../services/authService';
+import { onAuthStateChange, signInUser, signOutUser, registerUser, resetPassword } from '../services/authService';
 import { saveUserData, findUserInCollections, getUserData } from '../services/firestoreService';
 import { COLLECTIONS, USER_ROLES } from '../constants';
 import { db } from '../firebase/firebaseConfig';
@@ -111,16 +111,18 @@ export const AuthProvider = ({ children }) => {
       const result = await signInUser(email, password);
       
       if (result.success) {
-        // Los datos del usuario se actualizarán automáticamente por onAuthStateChange
-        return { success: true };
+        // IMPORTANTE: No seteamos loading(false) aquí si tuvo éxito.
+        // Dejamos que el listener onAuthStateChanged maneje la carga de datos
+        // y finalmente desactive el loading global.
+        return result;
       }
       
+      setLoading(false);
       return result;
     } catch (error) {
+      setLoading(false);
       console.error('Error en login:', error);
       return { success: false, error: 'Error inesperado al iniciar sesión' };
-    } finally {
-      setLoading(false);
     }
   }, []);
 
@@ -194,56 +196,16 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   /**
-   * Registra un administrador
+   * Envía un correo para restablecer la contraseña
    */
-  const registerAdmin = useCallback(async (adminData, adminCode) => {
+  const sendPasswordReset = useCallback(async (email) => {
     try {
       setLoading(true);
-      
-      // Validar código de admin (puedes cambiar esto)
-      if (adminCode !== 'OLIMU_ADMIN_2024') {
-        return { success: false, error: 'Código de administrador inválido' };
-      }
-
-      // Registrar en Firebase Auth
-      const authResult = await registerUser(
-        adminData.email, 
-        adminData.password, 
-        adminData.name
-      );
-      
-      if (!authResult.success) {
-        return authResult;
-      }
-
-      // Guardar datos en Firestore
-      const firestoreData = {
-        name: adminData.name,
-        email: adminData.email,
-        role: USER_ROLES.ADMIN,
-        emailVerified: false,
-        isActive: true,
-        permissions: ['dashboard', 'appointments', 'clients', 'services']
-      };
-
-      const saveResult = await saveUserData(
-        authResult.user.uid, 
-        firestoreData, 
-        COLLECTIONS.ADMINS
-      );
-
-      if (!saveResult.success) {
-        return saveResult;
-      }
-
-      return {
-        success: true,
-        message: 'Administrador registrado exitosamente',
-        user: authResult.user
-      };
+      const result = await resetPassword(email);
+      return result;
     } catch (error) {
-      console.error('Error en registerAdmin:', error);
-      return { success: false, error: 'Error inesperado al registrar administrador' };
+      console.error('Error en sendPasswordReset:', error);
+      return { success: false, error: 'Error inesperado al recuperar contraseña' };
     } finally {
       setLoading(false);
     }
@@ -271,23 +233,13 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     registerClient,
-    registerAdmin
+    sendPasswordReset
   };
 
   // Debug: Exponer db y herramientas globalmente para debugging
+  // El sistema de limpieza y herramientas de depuración ha sido removido para producción
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development' || window.location.hostname.includes('web.app')) {
-      window.db = db;
-      
-      // Importar herramientas de conectividad
-      import('../utils/connectivityTest.js').then((module) => {
-        window.testConnectivity = module.default;
-        console.log('🛠️ Firebase Debug Tools disponibles en la consola');
-        console.log('🔧 Ejecuta: window.testConnectivity() para verificar conectividad completa');
-      }).catch((error) => {
-        console.log('⚠️ Herramientas de debug no disponibles:', error);
-      });
-    }
+    console.log('🚀 Olimu Barbershop - Sistema Operativo');
   }, []);
 
   return (

@@ -24,6 +24,7 @@ import Dashboard from './Dashboard';
 import Appointments from './Appointments';
 import ManageServices from './ManageServices';
 import ClientsAnalytics from './ClientsAnalytics';
+import BusinessSettings from './BusinessSettings';
 
 const AdminLayout = () => {
   const { currentUser, logout } = useAuth();
@@ -58,6 +59,12 @@ const AdminLayout = () => {
       label: 'Servicios',
       icon: Scissors,
       component: ManageServices
+    },
+    {
+      id: 'config',
+      label: 'Configuración',
+      icon: Settings,
+      component: BusinessSettings
     }
   ];
 

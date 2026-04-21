@@ -8,13 +8,14 @@ import {
   ArrowRight,
   Settings,
   UserPlus,
-  ChevronLeft
+  ChevronLeft,
+  LogIn,
+  Lock
 } from 'lucide-react';
 import { useForm } from '../hooks/useForm';
 import { useNotification } from '../hooks/useNotification';
-import { validateClientRegistration } from '../utils/validation';
-import { saveUserData, findUserInCollections } from '../services/firestoreService';
-import { COLLECTIONS, ROUTES } from '../constants';
+import { useAuth } from '../context/AuthContext';
+import { validateClientRegistration, validateLogin } from '../utils/validation';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
@@ -23,173 +24,142 @@ import Notification from '../components/Notification';
 
 const ClientRegistrationScreen = ({ onGoBack, onClientRegistered, onAdminAccess }) => {
   const { notification, showSuccess, showError, showInfo, hideNotification } = useNotification();
+  const { login, registerClient, userData, isAuthenticated, isClient } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [isReturningClient, setIsReturningClient] = useState(false);
+  const [isLoginMode, setIsLoginMode] = useState(true); // Por defecto, login profesional
 
+  // Formulario para registro
   const {
-    values: formData,
-    errors,
-    handleChange,
-    handleBlur,
-    validate,
-    setValues,
-    reset
+    values: regValues,
+    errors: regErrors,
+    handleChange: handleRegChange,
+    handleBlur: handleRegBlur,
+    validate: validateReg,
+    reset: resetReg
   } = useForm({
     name: '',
     phone: '',
-    email: ''
+    email: '',
+    password: ''
   }, validateClientRegistration);
 
-  // Verificar si es un cliente que regresa
+  // Formulario para login
+  const {
+    values: loginValues,
+    errors: loginErrors,
+    handleChange: handleLoginChange,
+    handleBlur: handleLoginBlur,
+    validate: validateLoginForm,
+    reset: resetLogin
+  } = useForm({
+    email: '',
+    password: ''
+  }, validateLogin);
+
+  // Auto-login si ya existe sesión de cliente
   useEffect(() => {
-    const checkReturningClient = () => {
-      const savedClientData = localStorage.getItem('olimubarbershop_client');
-      if (savedClientData) {
-        try {
-          const clientData = JSON.parse(savedClientData);
-          setValues(clientData);
-          setIsReturningClient(true);
-          showInfo(`¡Hola ${clientData.name}! Te recordamos. ¿Continuar con estos datos?`);
-        } catch (error) {
-          console.error('Error parsing saved client data:', error);
-          localStorage.removeItem('olimubarbershop_client');
-        }
-      }
-    };
+    if (isAuthenticated && isClient && userData) {
+      showSuccess(`¡Bienvenido de vuelta, ${userData.name}!`);
+      onClientRegistered?.(userData);
+    }
+  }, [isAuthenticated, isClient, userData, onClientRegistered, showSuccess]);
 
-    checkReturningClient();
-  }, [setValues, showInfo]);
-
-  // Función para limpiar datos de cliente guardados
-  const clearSavedClientData = () => {
-    localStorage.removeItem('olimubarbershop_client');
-    setIsReturningClient(false);
-    reset();
-    showInfo('Datos borrados. Puedes ingresar información nueva.');
-  };
-
-  // Manejar envío del formulario
-  const handleSubmit = async (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     
-    if (!validate()) {
-      showError('Por favor, corrige los errores en el formulario');
+    if (!validateLoginForm()) {
+      showError('Por favor verifica los campos obligatorios.');
       return;
     }
 
     setLoading(true);
-
     try {
-      console.log('=== INICIO REGISTRO CLIENTE ===');
-      console.log('Datos del formulario:', formData);
+      const result = await login(loginValues.email, loginValues.password);
       
-      // Verificar si el cliente ya existe
-      const existingClient = await findUserInCollections(
-        formData.email || formData.phone,
-        ['email', 'phone']
-      );
-
-      console.log('Resultado búsqueda cliente existente:', existingClient);
-
-      let clientData = {
-        ...formData,
-        lastVisit: new Date().toISOString(),
-        registrationDate: existingClient.success ? existingClient.data.registrationDate : new Date().toISOString(),
-        totalAppointments: existingClient.success ? (existingClient.data.totalAppointments || 0) + 1 : 1,
-        role: 'client',
-        isActive: true,
-        emailVerified: false
-      };
-
-      console.log('Datos del cliente a guardar:', clientData);
-
-      let result;
-      
-      if (existingClient.success) {
-        // Actualizar cliente existente
-        console.log('Actualizando cliente existente con ID:', existingClient.id);
-        result = await saveUserData(existingClient.id, clientData, COLLECTIONS.CLIENTS);
-        if (result.success) {
-          clientData.id = existingClient.id;
-          showSuccess(`¡Bienvenido de vuelta, ${formData.name}!`);
-        }
-      } else {
-        // Crear nuevo cliente
-        console.log('Creando nuevo cliente...');
-        result = await saveUserData(null, clientData, COLLECTIONS.CLIENTS);
-        if (result.success) {
-          clientData.id = result.id;
-          console.log('Cliente creado con ID:', result.id);
-          showSuccess(`¡Bienvenido, ${formData.name}! Cliente registrado exitosamente.`);
-        }
-      }
-
-      console.log('Resultado de saveUserData:', result);
-
       if (!result.success) {
-        throw new Error(result.error || 'Error al guardar datos');
+        showError(result.error || 'Credenciales incorrectas');
+        setLoading(false);
+        return;
       }
 
-      // Guardar datos en localStorage para futuras visitas
-      localStorage.setItem('olimubarbershop_client', JSON.stringify(clientData));
-      console.log('Datos guardados en localStorage:', clientData);
-
-      // Notificar al componente padre y continuar al siguiente paso
-      setTimeout(() => {
-        onClientRegistered?.(clientData);
-      }, 1500);
-
-      console.log('=== FIN REGISTRO CLIENTE EXITOSO ===');
-
+      // Si fue exitoso, el useEffect de auto-login se encargará del redireccionamiento
+      // cuando userData se actualice desde el AuthContext
     } catch (error) {
-      console.error('=== ERROR EN REGISTRO CLIENTE ===');
-      console.error('Error completo:', error);
-      showError(`Error al procesar el registro: ${error.message}`);
-    } finally {
+      console.error('Error en login de cliente:', error);
+      showError('Error al iniciar sesión');
       setLoading(false);
     }
   };
 
-  if (loading) {
+  const handleRegisterSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!validateReg()) {
+      showError('Por favor verifica los campos obligatorios para el registro.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await registerClient({
+        name: regValues.name,
+        phone: regValues.phone,
+        email: regValues.email,
+        password: regValues.password
+      });
+
+      if (!result.success) {
+        showError(result.error || 'Error al crear la cuenta');
+        setLoading(false);
+        return;
+      }
+
+      // Si fue exitoso, el useEffect de auto-login se encargará del redireccionamiento
+    } catch (error) {
+      console.error('Error en registro de cliente:', error);
+      showError('Error al crear cuenta');
+      setLoading(false);
+    }
+  };
+
+  const toggleMode = () => {
+    setIsLoginMode(!isLoginMode);
+    resetReg();
+    resetLogin();
+  };
+
+  // Si estamos cargando o ya estamos autenticados (esperando redirección), mostrar spinner
+  if (loading || isAuthenticated) {
     return (
       <LoadingSpinner 
         type="barbershop" 
-        message="Registrando cliente..." 
+        message={isAuthenticated ? "Entrando..." : "Cargando..."} 
         fullScreen={true}
       />
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 p-6">
-      <div className="max-w-md mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          {onGoBack && (
+    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 p-6 flex flex-col items-center justify-center">
+      <div className="w-full max-w-md mx-auto">
+        {/* Header con botón regresar (solo visible en modo registro) */}
+        <div className="flex items-center justify-between mb-8 w-full min-h-[40px]">
+          {!isLoginMode && (
             <Button
               variant="ghost"
-              onClick={onGoBack}
-              className="flex items-center gap-2 text-zinc-400 hover:text-white"
+              onClick={() => setIsLoginMode(true)}
+              className="flex items-center gap-2 text-zinc-400 hover:text-white -ml-4"
             >
               <ChevronLeft className="w-5 h-5" />
               <span>Regresar</span>
             </Button>
           )}
           
-          {onAdminAccess && (
-            <Button
-              variant="ghost"
-              onClick={onAdminAccess}
-              className="flex items-center gap-2 text-zinc-400 hover:text-amber-400"
-            >
-              <Settings className="w-5 h-5" />
-              <span>Admin</span>
-            </Button>
-          )}
+          <div className="flex-1"></div>
         </div>
 
         {/* Branding */}
-        <Card className="mb-8 text-center bg-gradient-to-br from-zinc-800/80 to-zinc-900/80 backdrop-blur-sm border-zinc-700">
+        <Card className="mb-6 text-center bg-gradient-to-br from-zinc-800/80 to-zinc-900/80 backdrop-blur-sm border-zinc-700">
           <div className="flex items-center justify-center mb-4">
             <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center mr-4">
               <Scissors className="w-8 h-8 text-white" />
@@ -202,90 +172,152 @@ const ClientRegistrationScreen = ({ onGoBack, onClientRegistered, onAdminAccess 
             </div>
           </div>
           <h2 className="text-xl font-semibold text-white mb-2">
-            {isReturningClient ? '¡Bienvenido de vuelta!' : 'Bienvenido'}
+            {isLoginMode ? 'Inicia Sesión' : 'Crea tu Cuenta'}
           </h2>
           <p className="text-zinc-400 text-sm">
-            {isReturningClient 
-              ? 'Confirma tus datos o actualízalos si han cambiado'
-              : 'Completa tu información para agendar tu cita'
+            {isLoginMode 
+              ? 'Accede para gestionar tus citas'
+              : 'Regístrate para reservar tu turno fácil y rápido'
             }
           </p>
         </Card>
 
-        {/* Formulario */}
+        {/* Formulario Login / Registro */}
         <Card className="bg-zinc-800/80 backdrop-blur-sm border-zinc-700">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-4">
-              <Input
-                type="text"
-                name="name"
-                placeholder="Nombre completo"
-                value={formData.name}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                error={errors.name}
-                disabled={loading}
-                icon={User}
-                required
-              />
+          {isLoginMode ? (
+            // FORMULARIO DE LOGIN
+            <form onSubmit={handleLoginSubmit} className="space-y-6">
+              <div className="space-y-4">
+                <Input
+                  type="email"
+                  name="email"
+                  placeholder="Correo electrónico"
+                  value={loginValues.email}
+                  onChange={handleLoginChange}
+                  onBlur={handleLoginBlur}
+                  error={loginErrors.email}
+                  disabled={loading}
+                  icon={Mail}
+                  required
+                />
+                <Input
+                  type="password"
+                  name="password"
+                  placeholder="Contraseña"
+                  value={loginValues.password}
+                  onChange={handleLoginChange}
+                  onBlur={handleLoginBlur}
+                  error={loginErrors.password}
+                  disabled={loading}
+                  icon={Lock}
+                  required
+                />
+              </div>
 
-              <Input
-                type="tel"
-                name="phone"
-                placeholder="Número de teléfono"
-                value={formData.phone}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                error={errors.phone}
-                disabled={loading}
-                icon={Phone}
-                required
-              />
-
-              <Input
-                type="email"
-                name="email"
-                placeholder="Correo electrónico (opcional)"
-                value={formData.email}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                error={errors.email}
-                disabled={loading}
-                icon={Mail}
-              />
-            </div>
-
-            {/* Botones de acción */}
-            <div className="space-y-3">
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={loading}
-                loading={loading}
-              >
-                <UserPlus className="w-5 h-5 mr-2" />
-                {isReturningClient ? 'Continuar' : 'Registrar y Continuar'}
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
-
-              {isReturningClient && (
+              <div className="space-y-3">
                 <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={clearSavedClientData}
+                  type="submit"
                   className="w-full"
                   disabled={loading}
+                  loading={loading}
                 >
-                  Usar datos nuevos
+                  <LogIn className="w-5 h-5 mr-2" />
+                  Iniciar Sesión
                 </Button>
-              )}
-            </div>
-          </form>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={toggleMode}
+                  className="w-full text-zinc-400 hover:text-amber-400"
+                  disabled={loading}
+                >
+                  ¿No tienes cuenta? Regístrate
+                </Button>
+              </div>
+            </form>
+          ) : (
+            // FORMULARIO DE REGISTRO
+            <form onSubmit={handleRegisterSubmit} className="space-y-6">
+              <div className="space-y-4">
+                <Input
+                  type="text"
+                  name="name"
+                  placeholder="Nombre completo"
+                  value={regValues.name}
+                  onChange={handleRegChange}
+                  onBlur={handleRegBlur}
+                  error={regErrors.name}
+                  disabled={loading}
+                  icon={User}
+                  required
+                />
+                <Input
+                  type="tel"
+                  name="phone"
+                  placeholder="Número de teléfono"
+                  value={regValues.phone}
+                  onChange={handleRegChange}
+                  onBlur={handleRegBlur}
+                  error={regErrors.phone}
+                  disabled={loading}
+                  icon={Phone}
+                  required
+                />
+                <Input
+                  type="email"
+                  name="email"
+                  placeholder="Correo electrónico"
+                  value={regValues.email}
+                  onChange={handleRegChange}
+                  onBlur={handleRegBlur}
+                  error={regErrors.email}
+                  disabled={loading}
+                  icon={Mail}
+                  required
+                />
+                <Input
+                  type="password"
+                  name="password"
+                  placeholder="Crea una contraseña"
+                  value={regValues.password}
+                  onChange={handleRegChange}
+                  onBlur={handleRegBlur}
+                  error={regErrors.password}
+                  disabled={loading}
+                  icon={Lock}
+                  required
+                />
+              </div>
+
+              <div className="space-y-3">
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={loading}
+                  loading={loading}
+                >
+                  <UserPlus className="w-5 h-5 mr-2" />
+                  Crear Cuenta
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={toggleMode}
+                  className="w-full text-zinc-400 hover:text-amber-400"
+                  disabled={loading}
+                >
+                  ¿Ya tienes cuenta? Inicia sesión
+                </Button>
+              </div>
+            </form>
+          )}
 
           {/* Información adicional */}
           <div className="mt-6 p-4 bg-zinc-900/50 rounded-lg">
             <p className="text-xs text-zinc-500 text-center">
-              Tu información se guarda de forma segura y solo se usa para mejorar tu experiencia en nuestro barbershop.
+              Tu información está cifrada de extremo a extremo y protegida bajo estándares ISO para garantizar tu privacidad.
             </p>
           </div>
         </Card>
@@ -297,20 +329,6 @@ const ClientRegistrationScreen = ({ onGoBack, onClientRegistered, onAdminAccess 
             type={notification.type}
             onClose={hideNotification}
           />
-        )}
-
-        {/* Botón de acceso administrativo - Más visible */}
-        {onAdminAccess && (
-          <div className="mt-8 text-center">
-            <Button
-              variant="ghost"
-              onClick={onAdminAccess}
-              className="text-zinc-500 hover:text-amber-400 text-sm"
-            >
-              <Settings className="w-4 h-4 mr-2" />
-              Acceso Administrativo
-            </Button>
-          </div>
         )}
       </div>
     </div>

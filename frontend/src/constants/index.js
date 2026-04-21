@@ -7,7 +7,6 @@ export const ROUTES = {
   CLIENT_REGISTRATION: 'clientRegistration',
   SERVICE_SELECTION: 'serviceSelection',
   APPOINTMENT_BOOKING: 'appointmentBooking',
-  LOGIN: 'login',
   ADMIN_PANEL: 'adminPanel',
   DASHBOARD: 'dashboard'
 };
